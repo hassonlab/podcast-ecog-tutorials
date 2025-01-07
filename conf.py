@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "monkey-tutorials"
+project = "podcast-ecog-ds"
 copyright = "2024, Zaid Zada"
 author = "Zaid Zada"
 
@@ -19,6 +19,7 @@ extensions = [
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+html_logo = "_static/neurohack.png"
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -26,3 +27,8 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 html_theme = "alabaster"
 html_static_path = ["_static"]
+
+
+# -- Options for nbsphinx -------------------------------------------------
+nbsphinx_execute = "never"
+nbsphinx_assume_equations = False
