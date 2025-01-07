@@ -1,21 +1,15 @@
-.. monkey-tutorials documentation master file, created by
-   sphinx-quickstart on Mon Oct 14 10:46:50 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+The “Podcast” ECoG dataset for modeling neural activity during natural story listening
+======================================================================================
 
-monkey-tutorials documentation
-==============================
+Welcome...
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
-
+.. image:: _static/fig1.png
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: Tutorials:
 
    notebooks/00-intro.ipynb
-   notebooks/01-audioxcorr.ipynb
-   notebooks/02-erp.ipynb
-   notebooks/03-encoding.ipynb
+   notebooks/01-qualitychecks.ipynb
+   notebooks/03-features.ipynb
+   notebooks/04-encoding.ipynb
