@@ -1,0 +1,144 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Atlas-based parcellation"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "\n",
+    "from mne.io import read_raw_fif\n",
+    "from mne_bids import BIDSPath\n",
+    "from nilearn import datasets, image\n",
+    "from collections import Counter\n",
+    "\n",
+    "import pandas as pd\n",
+    "from sklearn.utils import Bunch\n",
+    "from scipy.spatial import KDTree\n",
+    "from nilearn.datasets._utils import (\n",
+    "    get_dataset_descr,\n",
+    "    get_dataset_dir,\n",
+    "    fetch_single_file,\n",
+    ")\n",
+    "import shutil\n",
+    "import os\n",
+    "\n",
+    "\n",
+    "def get_coord_atlas_labels(\n",
+    "    coords: np.array, atlas_map: str, atlas_labels: list[str]\n",
+    ") -> list[str]:\n",
+    "    atlas_map = image.load_img(atlas_map)\n",
+    "    atlas_image = atlas_map.get_fdata().astype(int)\n",
+    "\n",
+    "    # find non-zero labels\n",
+    "    image_label_coords = np.nonzero(atlas_image)\n",
+    "\n",
+    "    # transform label indices to MNI space\n",
+    "    atlas_coords = np.vstack(\n",
+    "        image.coord_transform(*image_label_coords, atlas_map.affine)\n",
+    "    ).T\n",
+    "\n",
+    "    # find nearest neighbor\n",
+    "    # dists = cdist(\n",
+    "    #     coords.astype(np.float32), atlas_coords.astype(np.float32), metric=\"euclidean\"\n",
+    "    # )\n",
+    "    # nearest_neighbor = dists.argmin(-1)\n",
+    "    tree = KDTree(atlas_coords)\n",
+    "    dists, nearest_neighbor = tree.query(coords, k=1)\n",
+    "\n",
+    "    # look up neighbor index in map\n",
+    "    x = image_label_coords[0][nearest_neighbor]\n",
+    "    y = image_label_coords[1][nearest_neighbor]\n",
+    "    z = image_label_coords[2][nearest_neighbor]\n",
+    "\n",
+    "    # convert map index to label\n",
+    "    elec_label_ids = atlas_image[x, y, z]\n",
+    "    elec_labels = [atlas_labels[i] for i in elec_label_ids]\n",
+    "\n",
+    "    return elec_labels"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "atlas = datasets.fetch_atlas_destrieux_2009()\n",
+    "indices = atlas['labels'].index\n",
+    "names = atlas['labels'].name\n",
+    "atlas_labels = {idx: name for idx, name in zip(indices, names)}\n",
+    "\n",
+    "# atlas = datasets.fetch_atlas_schaefer_2018(n_rois=100, resolution_mm=1, yeo_networks=17)\n",
+    "# atlas_labels = ['background'] + [l.decode() for l in atlas['labels']]\n",
+    "\n",
+    "# atlas = fetch_atlas_glasser_2016()\n",
+    "# atlas_labels = atlas['labels'].to_dict()['label']\n",
+    "\n",
+    "original_elec_labels = get_coord_atlas_labels(coords, atlas['maps'], atlas_labels)\n",
+    "elec_labels = [label.split()[1] for label in original_elec_labels]  # for destrieux\n",
+    "\n",
+    "# elec_labels = [label.split(\"_\")[1] for label in elec_labels]  # for glasser\n",
+    "# elec_labels = [label.split(\"_\", 2)[-1].split(\"_\")[1] for label in elec_labels]  # for schaefer\n",
+    "# elec_labels = [label.split(\"_\", 2)[-1].split(\"_\")[0] for label in elec_labels]  # for kong networks\n",
+    "# elec_labels = [label.split(\"_\", 2)[-1] for label in elec_labels]  # for schaefer, just remove network and hemi"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "counter = Counter(elec_labels)\n",
+    "top_rois = counter.most_common(24)\n",
+    "\n",
+    "fig, axes = plt.subplots(6, 4, sharex=True, sharey=True, dpi=300, figsize=(12, 10))\n",
+    "\n",
+    "for (roi, count), ax in zip(top_rois, axes.ravel()):\n",
+    "\n",
+    "    roi_mask = np.array([roi in label for label in elec_labels])\n",
+    "    roi_coords = coords[roi_mask]\n",
+    "    scores = np.ones(len(roi_coords))\n",
+    "\n",
+    "    plot_markers(scores, coords[roi_mask],\n",
+    "                node_size=10, display_mode='xz',\n",
+    "                alpha=0.8, colorbar=False,\n",
+    "                node_cmap='Grays', node_vmin=0, node_vmax=1,\n",
+    "                figure=fig, axes=ax)\n",
+    "\n",
+    "    ax.set_title(roi, fontsize=8)\n",
+    "fig.show()"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "mne",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.12.7"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}

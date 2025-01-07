@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Introduction &#8212; monkey-tutorials  documentation</title>
+    <title>Getting started &#8212; podcast-ecog-ds  documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=686e5160" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
@@ -14,12 +14,10 @@
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
-    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Audio-ECoG cross-correlation" href="01-audioxcorr.html" />
-    <link rel="prev" title="monkey-tutorials documentation" href="../index.html" />
+    <link rel="next" title="ECoG quality checks" href="01-qualitychecks.html" />
+    <link rel="prev" title="The “Podcast” ECoG dataset for modeling neural activity during natural story listening" href="../index.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
   
@@ -37,50 +35,452 @@
 
           <div class="body" role="main">
             
-  <section id="Introduction">
-<h1>Introduction<a class="headerlink" href="#Introduction" title="Link to this heading">¶</a></h1>
-<p>here, we show you how to load and plot ECoG data.</p>
+  <section id="Getting-started">
+<h1>Getting started<a class="headerlink" href="#Getting-started" title="Link to this heading">¶</a></h1>
+<p>This tutorial will guide you through installing the required libraries for the rest of the tutorials, downloading and accessing the dataset, and loading some data to view.</p>
+<section id="Setup-your-environment">
+<h2>Setup your environment<a class="headerlink" href="#Setup-your-environment" title="Link to this heading">¶</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>torch<span class="w"> </span>torchvision<span class="w"> </span>torchaudio<span class="w"> </span>--index-url<span class="w"> </span>https://download.pytorch.org/whl/cu124
+<span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>jupyter<span class="w"> </span>plotly<span class="w"> </span>matplotlib<span class="w"> </span>nilearn<span class="w"> </span>statsmodels<span class="w"> </span>himalaya<span class="w"> </span>accelerate<span class="w"> </span>transformers<span class="w"> </span>nltk<span class="w"> </span>sentencepiece<span class="w"> </span>spacy
+<span class="o">!</span>python<span class="w"> </span>-m<span class="w"> </span>spacy<span class="w"> </span>download<span class="w"> </span>en_core_web_lg
+</pre></div>
+</div>
+</div>
+<p>Now that libraries are installed, we can load them.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">mne</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-
-<span class="kn">from</span> <span class="nn">nilearn.plotting</span> <span class="kn">import</span> <span class="n">plot_markers</span>
 <span class="kn">from</span> <span class="nn">mne_bids</span> <span class="kn">import</span> <span class="n">BIDSPath</span>
-<br/></pre></div>
+</pre></div>
 </div>
 </div>
+</section>
+<section id="Download-the-data">
+<h2>Download the data<a class="headerlink" href="#Download-the-data" title="Link to this heading">¶</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># TODO - download from OpenNeuro</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Verify-dataset">
+<h2>Verify dataset<a class="headerlink" href="#Verify-dataset" title="Link to this heading">¶</a></h2>
+<p>Now that we have the dependencies installed and the dataset downloaded, let’s make sure we can load the files and work with them. For this, we’ll be working with a library called <a class="reference external" href="https://mne.tools/">MNE</a>. Because the dataset is structured according to <a class="reference external" href="https://bids-specification.readthedocs.io/en/stable/">BIDS</a> conventions, we can use the <code class="docutils literal notranslate"><span class="pre">BIDSPath</span></code> class to help us find specific files.</p>
+<p>For now, we want to work the already preprocessed data that is filtered into the high gamma band. This file exists in <code class="docutils literal notranslate"><span class="pre">derivatives/ecogprep/sub-0*/ieeg/sub-0*_task-monkey_desc-highgamma_ieeg.fif</span></code>. The <code class="docutils literal notranslate"><span class="pre">fif</span></code> extension signifies this is an MNE format that contains the data and metadata in one file. Now, we’ll use <code class="docutils literal notranslate"><span class="pre">BIDSPath</span></code> and its <code class="docutils literal notranslate"><span class="pre">match</span></code> method to find these files.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">edf_path</span> <span class="o">=</span> <span class="n">BIDSPath</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="s2">&quot;../monkey/derivatives/ecogprep&quot;</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span> <span class="n">extension</span><span class="o">=</span><span class="s2">&quot;.fif&quot;</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">edf_path</span> <span class="o">=</span> <span class="n">BIDSPath</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="s2">&quot;../../monkey/derivatives/ecogprep&quot;</span><span class="p">,</span>
+                    <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span>
+                    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;highgamma&quot;</span><span class="p">,</span>
+                    <span class="n">extension</span><span class="o">=</span><span class="s2">&quot;.fif&quot;</span><span class="p">)</span>
 <span class="n">edf_paths</span> <span class="o">=</span> <span class="n">edf_path</span><span class="o">.</span><span class="n">match</span><span class="p">()</span>
-<span class="c1"># hacky way just to get highgamma since `desc` doesn&#39;t work</span>
-<span class="n">edf_paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">path</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">edf_paths</span> <span class="k">if</span> <span class="s1">&#39;highgamma&#39;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)]</span>
-<span class="nb">len</span><span class="p">(</span><span class="n">edf_paths</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">edf_paths</span><span class="p">)</span><span class="si">}</span><span class="s2"> matching paths&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Second path: </span><span class="si">{</span><span class="n">edf_paths</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
-</pre></div>
+<div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-8
+Found 9 matching paths
+Second path: ../../monkey/derivatives/ecogprep/sub-02/ieeg/sub-02_task-monkey_desc-highgamma_ieeg.fif
 </pre></div></div>
 </div>
+<p>Now let’s load one of these files using the <code class="docutils literal notranslate"><span class="pre">read_raw_fif</span></code> file, and then display some of the metadata about the file.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">raw</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_raw_fif</span><span class="p">(</span><span class="n">edf_paths</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">raw</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_raw_fif</span><span class="p">(</span><span class="n">edf_paths</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="n">raw</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<script type="text/javascript">
+    const toggleVisibility = (className) => {
+
+  const elements = document.querySelectorAll(`.${className}`)
+
+  elements.forEach(element => {
+    if (element.classList.contains('repr-section-header')) {
+      // Don't collapse the section header row.
+       return
+    }
+    if (element.classList.contains('repr-element-collapsed')) {
+      // Force a reflow to ensure the display change takes effect before removing the class
+      element.classList.remove('repr-element-collapsed')
+      element.offsetHeight // This forces the browser to recalculate layout
+      element.classList.remove('repr-element-faded')
+    } else {
+      // Start transition to hide the element
+      element.classList.add('repr-element-faded')
+      element.addEventListener('transitionend', handler = (e) => {
+        if (e.propertyName === 'opacity' && getComputedStyle(element).opacity === '0.2') {
+          element.classList.add('repr-element-collapsed')
+          element.removeEventListener('transitionend', handler)
+        }
+      });
+    }
+  });
+
+  // Take care of button (adjust caret)
+  const button = document.querySelectorAll(`.repr-section-header.${className} > th.repr-section-toggle-col > button`)[0]
+  button.classList.toggle('collapsed')
+
+  // Take care of the tooltip of the section header row
+  const sectionHeaderRow = document.querySelectorAll(`tr.repr-section-header.${className}`)[0]
+  sectionHeaderRow.classList.toggle('collapsed')
+  sectionHeaderRow.title = sectionHeaderRow.title === 'Hide section' ? 'Show section' : 'Hide section'
+}
+</script>
+
+<style type="text/css">
+    table.repr.table.table-hover.table-striped.table-sm.table-responsive.small {
+  /* Don't make rows wider than they need to be. */
+  display: inline;
+}
+
+table > tbody > tr.repr-element > td {
+  /* Apply a tighter layout to the table cells. */
+  padding-top: 0.1rem;
+  padding-bottom: 0.1rem;
+  padding-right: 1rem;
+}
+
+table > tbody > tr > td.repr-section-toggle-col {
+  /* Remove background and border of the first cell in every row
+     (this row is only used for the collapse / uncollapse caret)
+
+     TODO: Need to find a good solution for VS Code that works in both
+           light and dark mode. */
+  border-color: transparent;
+  --bs-table-accent-bg: transparent;
+}
+
+tr.repr-section-header {
+  /* Remove stripes from section header rows */
+  background-color: transparent;
+  border-color: transparent;
+  --bs-table-striped-bg: transparent;
+  cursor: pointer;
+}
+
+tr.repr-section-header > th {
+  text-align: left !important;
+  vertical-align: middle;
+}
+
+.repr-element, tr.repr-element > td {
+  opacity: 1;
+  text-align: left !important;
+}
+
+.repr-element-faded {
+  transition: 0.3s ease;
+  opacity: 0.2;
+}
+
+.repr-element-collapsed {
+  display: none;
+}
+
+/* Collapse / uncollapse button and the caret it contains. */
+.repr-section-toggle-col button {
+  cursor: pointer;
+  width: 1rem;
+  background-color: transparent;
+  border-color: transparent;
+}
+
+span.collapse-uncollapse-caret {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+  background-repeat: no-repeat;
+  background-position: left;
+  background-size: contain;
+}
+
+/* The collapse / uncollapse carets were copied from the free Font Awesome collection and adjusted. */
+
+/* Default to black carets for light mode */
+.repr-section-toggle-col > button.collapsed > span.collapse-uncollapse-caret {
+  background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="black" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>');
+}
+
+.repr-section-toggle-col
+  > button:not(.collapsed)
+  > span.collapse-uncollapse-caret {
+  background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="black" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>');
+}
+
+/* Use white carets for dark mode */
+@media (prefers-color-scheme: dark) {
+  .repr-section-toggle-col > button.collapsed > span.collapse-uncollapse-caret {
+    background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="white" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>');
+  }
+
+  .repr-section-toggle-col
+    > button:not(.collapsed)
+    > span.collapse-uncollapse-caret {
+    background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="white" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>');
+  }
+}
+
+.channel-names-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  cursor: pointer;
+  color: #0d6efd;
+}
+
+.channel-names-btn:hover {
+  color: #0a58ca;
+}
+</style>
+
+
+
+<table class="repr table table-hover table-striped table-sm table-responsive small">
+
+
+
+
+
+
+
+
+<tr class="repr-section-header general-0fffc5ec-dcb6-4399-9a56-c836b0c462ef"  title="Hide section"
+    onclick="toggleVisibility('general-0fffc5ec-dcb6-4399-9a56-c836b0c462ef')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>General</strong>
+    </th>
+</tr>
+
+<tr class="repr-element general-0fffc5ec-dcb6-4399-9a56-c836b0c462ef ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Filename(s)</td>
+    <td>
+
+        sub-02_task-monkey_desc-highgamma_ieeg.fif
+
+
+    </td>
+</tr>
+
+<tr class="repr-element general-0fffc5ec-dcb6-4399-9a56-c836b0c462ef ">
+    <td class="repr-section-toggle-col"></td>
+    <td>MNE object type</td>
+    <td>Raw</td>
+</tr>
+<tr class="repr-element general-0fffc5ec-dcb6-4399-9a56-c836b0c462ef ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Measurement date</td>
+
+    <td>2001-01-01 at 01:01:01 UTC</td>
+
+</tr>
+<tr class="repr-element general-0fffc5ec-dcb6-4399-9a56-c836b0c462ef ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Participant</td>
+
+
+    <td>sub-02</td>
+
+
+</tr>
+<tr class="repr-element general-0fffc5ec-dcb6-4399-9a56-c836b0c462ef ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Experimenter</td>
+
+    <td>Unknown</td>
+
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-section-header acquisition-3f26166d-e058-4f81-8cb0-c0a8d09a8893"
+    title="Hide section"  onclick="toggleVisibility('acquisition-3f26166d-e058-4f81-8cb0-c0a8d09a8893')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Acquisition</strong>
+    </th>
+</tr>
+
+<tr class="repr-element acquisition-3f26166d-e058-4f81-8cb0-c0a8d09a8893 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Duration</td>
+    <td>00:29:60 (HH:MM:SS)</td>
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-element acquisition-3f26166d-e058-4f81-8cb0-c0a8d09a8893 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Sampling frequency</td>
+    <td>512.00 Hz</td>
+</tr>
+
+
+<tr class="repr-element acquisition-3f26166d-e058-4f81-8cb0-c0a8d09a8893 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Time points</td>
+    <td>921,600</td>
+</tr>
+
+
+
+
+
+
+
+
+
+
+<tr class="repr-section-header channels-5a7206ff-32ee-4bfa-ac30-0e1f526414be"  title="Hide section"
+    onclick="toggleVisibility('channels-5a7206ff-32ee-4bfa-ac30-0e1f526414be')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Channels</strong>
+    </th>
+</tr>
+
+
+<tr class="repr-element channels-5a7206ff-32ee-4bfa-ac30-0e1f526414be ">
+    <td class="repr-section-toggle-col"></td>
+    <td>ECoG</td>
+    <td>
+        <button class="channel-names-btn" onclick="alert('Good ECoG:\n\nPO1, PO2, PO3, PO4, PO5, PO6, O1, O2, O3, O4, SFP1, SFP2, SFP3, SFP4, SFP5, LF1, LF2, LF3, LF4, LF5, LF6, LF7, LF8, PF2, PF3, PF4, PF5, PF6, MF1, MF2, MF3, MF4, MF5, MF6, MF7, MF8, IFP1, IFP2, IFP3, IFP4, IFP6, DI1, DI2, DI3, DI4, DI5, DI6, DI7, DI8, DI9, DI10, DLT1, DLT2, DLT3, DLT4, DLT5, DLT6, DLT7, DLT8, DLT9, DLT10, DMP1, DMP2, DMP3, DMP4, DMP5, DMP6, DMP7, DMF1, DMF2, DMF3, DMF4, DMF5, DMF6, DMF7, DMF8, DMF9, DMF10, DIF1, DIF2, DIF3, DIF4, DIF5, DIF6, DIF7, DIF8, DIF9, DIF10, DIF11, DIF12')" title="(Click to open in popup)&#13;&#13;PO1, PO2, PO3, PO4, PO5, PO6, O1, O2, O3, O4, SFP1, SFP2, SFP3, SFP4, SFP5, LF1, LF2, LF3, LF4, LF5, LF6, LF7, LF8, PF2, PF3, PF4, PF5, PF6, MF1, MF2, MF3, MF4, MF5, MF6, MF7, MF8, IFP1, IFP2, IFP3, IFP4, IFP6, DI1, DI2, DI3, DI4, DI5, DI6, DI7, DI8, DI9, DI10, DLT1, DLT2, DLT3, DLT4, DLT5, DLT6, DLT7, DLT8, DLT9, DLT10, DMP1, DMP2, DMP3, DMP4, DMP5, DMP6, DMP7, DMF1, DMF2, DMF3, DMF4, DMF5, DMF6, DMF7, DMF8, DMF9, DMF10, DIF1, DIF2, DIF3, DIF4, DIF5, DIF6, DIF7, DIF8, DIF9, DIF10, DIF11, DIF12">
+            90
+        </button>
+
+
+    </td>
+</tr>
+
+
+<tr class="repr-element channels-5a7206ff-32ee-4bfa-ac30-0e1f526414be ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Head & sensor digitization</td>
+
+    <td>93 points</td>
+
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-section-header filters-9b209f7e-764e-4d6b-8b7d-e0cc9a5f5b84"  title="Hide section"
+    onclick="toggleVisibility('filters-9b209f7e-764e-4d6b-8b7d-e0cc9a5f5b84')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Filters</strong>
+    </th>
+</tr>
+
+<tr class="repr-element filters-9b209f7e-764e-4d6b-8b7d-e0cc9a5f5b84 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Highpass</td>
+    <td>70.00 Hz</td>
+</tr>
+
+
+<tr class="repr-element filters-9b209f7e-764e-4d6b-8b7d-e0cc9a5f5b84 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Lowpass</td>
+    <td>200.00 Hz</td>
+</tr>
+
+
+</table></div>
+</div>
+<p>The output contains several important pieces of information. First, duration of the data is roughly 30 minutes long (corresponding to the length of the podcast). The data is sampled at 512 Hz. There are 90 ECoG channels. And the data has a filtered applied to it ranging from 70 Hz to 200 Hz.</p>
+<p>One of the primary MNE classes is the <a class="reference external" href="https://mne.tools/stable/generated/mne.io.Raw.html">Raw</a>. It has many useful methods and properties if you look at its documentation. The two we will mention now are <code class="docutils literal notranslate"><span class="pre">get_data()</span></code> and the <code class="docutils literal notranslate"><span class="pre">info</span></code> attribute. Sometimes we want to work with the underlying data directly. Here is how:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data is a </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2"> object and has a shape of: </span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Data is a &lt;class &#39;numpy.ndarray&#39;&gt; object and has a shape of: (90, 921600)
+</pre></div></div>
+</div>
+<p>We notice that the data is a NumPy object (a nearly universal way of working with numerical data in python), and its a matrix with two dimensions. The first dimension corresponds to the number of channels—90, as we saw before— and the second is the total number of samples.</p>
+<p><code class="docutils literal notranslate"><span class="pre">raw.info</span></code> returns an <a class="reference external" href="https://mne.tools/stable/generated/mne.Info.html">Info</a> object. We saw this information earlier as it contains much of the metadata of the file. Particularly useful are the information we can get on those 90 channels. This can be accessed by <code class="docutils literal notranslate"><span class="pre">raw.info.ch_names</span></code> and <code class="docutils literal notranslate"><span class="pre">raw.info.chs</span></code>. The documentation spells out the details very clearly. Below, we’ll use the channel information to get electrode locations and plot them on a brain.</p>
+<p>For example, let’s look at just the first electrode.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;First channel name is:&quot;</span><span class="p">,</span> <span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">ch_names</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Metadata associated with the first channel:&quot;</span><span class="p">)</span>
+<span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;chs&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
 </pre></div>
 </div>
 </div>
@@ -89,161 +489,9 @@
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Opening raw data file ../monkey/derivatives/ecogprep/sub-02/ieeg/sub-02_task-monkey_desc-highgamma_ieeg.fif...
-    Range : 0 ... 921599 =      0.000 ...  1799.998 secs
-Ready.
+First channel name is: PO1
+Metadata associated with the first channel:
 </pre></div></div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
-</pre></div>
-</div>
-<div class="output_area rendered_html docutils container">
-<details open>
-    <summary><strong>General</strong></summary>
-    <table class="table table-hover table-striped table-sm table-responsive small">
-        <tr>
-            <th>Measurement date</th>
-
-            <td>March 11, 2019  10:54:21 GMT</td>
-
-        </tr>
-        <tr>
-            <th>Experimenter</th>
-
-            <td>Unknown</td>
-
-        </tr>
-        <tr>
-            <th>Participant</th>
-
-
-            <td>sub-02</td>
-
-
-        </tr>
-    </table>
-    </details>
-    <details open>
-        <summary><strong>Channels</strong></summary>
-        <table class="table table-hover table-striped table-sm table-responsive small">
-            <tr>
-                <th>Digitized points</th>
-
-                <td>189 points</td>
-
-            </tr>
-            <tr>
-                <th>Good channels</th>
-                <td>186 ECoG</td>
-            </tr>
-            <tr>
-                <th>Bad channels</th>
-                <td>None</td>
-            </tr>
-            <tr>
-                <th>EOG channels</th>
-                <td>Not available</td>
-            </tr>
-            <tr>
-                <th>ECG channels</th>
-                <td>Not available</td>
-            </tr>
-        </table>
-        </details>
-        <details open>
-            <summary><strong>Data</strong></summary>
-            <table class="table table-hover table-striped table-sm table-responsive small">
-
-                <tr>
-                    <th>Sampling frequency</th>
-                    <td>512.00 Hz</td>
-                </tr>
-
-
-                <tr>
-                    <th>Highpass</th>
-                    <td>70.00 Hz</td>
-                </tr>
-
-
-                <tr>
-                    <th>Lowpass</th>
-                    <td>200.00 Hz</td>
-                </tr>
-
-
-
-                <tr>
-                    <th>Filenames</th>
-                    <td>sub-02_task-monkey_desc-highgamma_ieeg.fif</td>
-                </tr>
-
-
-                <tr>
-                    <th>Duration</th>
-                    <td>00:29:60 (HH:MM:SS)</td>
-                </tr>
-
-            </table>
-            </details></div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mne.viz</span> <span class="kn">import</span> <span class="p">(</span>
-    <span class="n">plot_alignment</span><span class="p">,</span>
-    <span class="n">set_3d_view</span><span class="p">,</span>
-    <span class="n">snapshot_brain_montage</span><span class="p">,</span>
-<span class="p">)</span>
-</pre></div>
-</div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span> <span class="o">=</span> <span class="n">plot_alignment</span><span class="p">(</span>
-    <span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="p">,</span>
-    <span class="n">trans</span><span class="o">=</span><span class="n">trans</span><span class="p">,</span>
-    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;sample_ecog&quot;</span><span class="p">,</span>
-    <span class="n">subjects_dir</span><span class="o">=</span><span class="n">subjects_dir</span><span class="p">,</span>
-    <span class="n">surfaces</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">pial</span><span class="o">=</span><span class="mf">0.9</span><span class="p">),</span>
-<span class="p">)</span>
-<span class="n">set_3d_view</span><span class="p">(</span><span class="n">figure</span><span class="o">=</span><span class="n">fig</span><span class="p">,</span> <span class="n">azimuth</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">elevation</span><span class="o">=</span><span class="mi">80</span><span class="p">)</span>
-<span class="n">xy</span><span class="p">,</span> <span class="n">im</span> <span class="o">=</span> <span class="n">snapshot_brain_montage</span><span class="p">(</span><span class="n">fig</span><span class="p">,</span> <span class="n">montage</span><span class="p">)</span>
-
-<span class="c1"># Convert from a dictionary to array to plot</span>
-<span class="n">xy_pts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">xy</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">raw</span><span class="o">.</span><span class="n">ch_names</span><span class="p">])</span>
-
-<span class="c1"># Compute beta power to visualize</span>
-<span class="n">raw</span><span class="o">.</span><span class="n">load_data</span><span class="p">()</span>
-<span class="n">beta_power</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span><span class="o">.</span><span class="n">apply_hilbert</span><span class="p">(</span><span class="n">envelope</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
-<span class="n">beta_power</span> <span class="o">=</span> <span class="n">beta_power</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># take maximum over time</span>
-
-<span class="c1"># This allows us to use matplotlib to create arbitrary 2d scatterplots</span>
-<span class="n">fig2</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">im</span><span class="p">)</span>
-<span class="n">cmap</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="o">*</span><span class="n">xy_pts</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="n">beta_power</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;coolwarm&quot;</span><span class="p">)</span>
-<span class="n">cbar</span> <span class="o">=</span> <span class="n">fig2</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">cmap</span><span class="p">)</span>
-<span class="n">cbar</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Beta Power&quot;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_axis_off</span><span class="p">()</span>
-
-<span class="c1"># fig2.savefig(&#39;./brain.png&#39;, bbox_inches=&#39;tight&#39;)  # For ClickableImage</span>
-</pre></div>
-</div>
-</div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ch2loc</span> <span class="o">=</span> <span class="p">{</span><span class="n">ch</span><span class="p">[</span><span class="s1">&#39;ch_name&#39;</span><span class="p">]:</span> <span class="n">ch</span><span class="p">[</span><span class="s1">&#39;loc&#39;</span><span class="p">][:</span><span class="mi">3</span><span class="p">]</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;chs&#39;</span><span class="p">]}</span>
-<span class="n">coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">ch2loc</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;ch_names&#39;</span><span class="p">]])</span>
-<span class="n">coords</span> <span class="o">*=</span> <span class="mi">1000</span>  <span class="c1"># nilearn likes to plot in meters, not mm</span>
-<span class="n">coords</span><span class="o">.</span><span class="n">shape</span>
-</pre></div>
-</div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
@@ -251,18 +499,44 @@ Ready.
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-(186, 3)
+{&#39;scanno&#39;: 1,
+ &#39;logno&#39;: 1,
+ &#39;kind&#39;: 902 (FIFFV_ECOG_CH),
+ &#39;range&#39;: 1.0,
+ &#39;cal&#39;: 1.0,
+ &#39;coil_type&#39;: 1 (FIFFV_COIL_EEG),
+ &#39;loc&#39;: array([-0.06466667, -0.051     , -0.01066667,  0.        ,  0.        ,
+         0.        ,         nan,         nan,         nan,         nan,
+                nan,         nan]),
+ &#39;unit&#39;: 107 (FIFF_UNIT_V),
+ &#39;unit_mul&#39;: 0 (FIFF_UNITM_NONE),
+ &#39;ch_name&#39;: &#39;PO1&#39;,
+ &#39;coord_frame&#39;: 4 (FIFFV_COORD_HEAD)}
 </pre></div></div>
 </div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[36]:
+<p>The <code class="docutils literal notranslate"><span class="pre">loc</span></code> key in the dictionary gives us the 3D coordinates (x, y, and z) that localize the electrode in brain space.</p>
+</section>
+<section id="Ploting-electrodes-on-the-brain">
+<h2>Ploting electrodes on the brain<a class="headerlink" href="#Ploting-electrodes-on-the-brain" title="Link to this heading">¶</a></h2>
+<p>Now we’ll use a library called <a class="reference external" href="https://nilearn.github.io/">nilearn</a> to help us plot the electrodes on a glass brain. We’ll be using the function <a class="reference external" href="https://nilearn.github.io/stable/modules/generated/nilearn.plotting.plot_markers.html">plot_markers</a>. Take a quick look at its parameters in the documentation, as they can be very useful.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">coords</span><span class="p">))</span>
-<span class="n">plot_markers</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">coords</span><span class="p">,</span>
-             <span class="n">node_size</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">display_mode</span><span class="o">=</span><span class="s1">&#39;lzr&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-             <span class="n">node_cmap</span><span class="o">=</span><span class="s1">&#39;Grays&#39;</span><span class="p">,</span> <span class="n">colorbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">node_vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">node_vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">nilearn.plotting</span> <span class="kn">import</span> <span class="n">plot_markers</span>
+</pre></div>
+</div>
+</div>
+<p>At a minimum, this function requires a set of values, and a corresponding set of coordinates. The coordinates tell <code class="docutils literal notranslate"><span class="pre">nilearn</span></code> <em>where</em> to plot the electrode, while the value tells it what color to assign it. For the example below, we just want to plot them all in one color, so values will be all the same number. Importantly, we need to collate the coordinates into a NumPy matrix of shape <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">3)</span></code> where <code class="docutils literal notranslate"><span class="pre">n</span></code> is the number of electrodes and the 3 columns are the coordinates of each electrode.
+First, we’ll assemble this matrix:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ch2loc</span> <span class="o">=</span> <span class="p">{</span><span class="n">ch</span><span class="p">[</span><span class="s1">&#39;ch_name&#39;</span><span class="p">]:</span> <span class="n">ch</span><span class="p">[</span><span class="s1">&#39;loc&#39;</span><span class="p">][:</span><span class="mi">3</span><span class="p">]</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;chs&#39;</span><span class="p">]}</span>
+<span class="n">coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">ch2loc</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;ch_names&#39;</span><span class="p">]])</span>
+<span class="n">coords</span> <span class="o">*=</span> <span class="mi">1000</span>  <span class="c1"># nilearn likes to plot in meters, not mm</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Coordinate matrix shape: &quot;</span><span class="p">,</span> <span class="n">coords</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -270,9 +544,39 @@ Ready.
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/notebooks_00-intro_7_0.png" src="../_images/notebooks_00-intro_7_0.png" />
+<div class="highlight"><pre>
+Coordinate matrix shape:  (90, 3)
+</pre></div></div>
+</div>
+<p>And now we plot them on the brain:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">coords</span><span class="p">))</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plot_markers</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">coords</span><span class="p">,</span>
+             <span class="n">node_size</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">display_mode</span><span class="o">=</span><span class="s1">&#39;lzr&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+             <span class="n">node_cmap</span><span class="o">=</span><span class="s1">&#39;Grays&#39;</span><span class="p">,</span> <span class="n">colorbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">node_vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">node_vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+</pre></div>
 </div>
 </div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;nilearn.plotting.displays._projectors.LZRProjector object at 0x15384f2a6480&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_00-intro_24_1.png" src="../_images/notebooks_00-intro_24_1.png" />
+</div>
+</div>
+</section>
 </section>
 
 
@@ -282,7 +586,10 @@ Ready.
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="../index.html">monkey-tutorials</a></h1>
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/neurohack.png" alt="Logo of podcast-ecog-ds"/>
+            </a></p>
+<h1 class="logo"><a href="../index.html">podcast-ecog-ds</a></h1>
 
 
 
@@ -301,22 +608,20 @@ Ready.
     </div>
 </search>
 <script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
-<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<p class="caption" role="heading"><span class="caption-text">Tutorials:</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a></li>
-<li class="toctree-l1"><a class="reference internal" href="01-audioxcorr.html">Audio-ECoG cross-correlation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="02-erp.html">Evoked response to word onsets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="03-encoding.html">Encoding model tutorial</a></li>
-<li class="toctree-l1"><a class="reference internal" href="03-encoding.html#load-brain-data">load brain data</a></li>
-<li class="toctree-l1"><a class="reference internal" href="03-encoding.html#encoding-model-analyses">encoding model analyses</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="01-qualitychecks.html">ECoG quality checks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="03-features.html">Getting word embeddings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="04-encoding.html">Training and evaluating encoding models</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="../index.html" title="previous chapter">monkey-tutorials documentation</a></li>
-      <li>Next: <a href="01-audioxcorr.html" title="next chapter">Audio-ECoG cross-correlation</a></li>
+      <li>Previous: <a href="../index.html" title="previous chapter">The “Podcast” ECoG dataset for modeling neural activity during natural story listening</a></li>
+      <li>Next: <a href="01-qualitychecks.html" title="next chapter">ECoG quality checks</a></li>
   </ul></li>
 </ul>
 </div>

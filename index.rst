@@ -1,9 +1,8 @@
 The “Podcast” ECoG dataset for modeling neural activity during natural story listening
 ======================================================================================
 
-Welcome...
+This is a set of tutorials for working with the "Podcast" ECoG dataset.
 
-.. image:: _static/fig1.png
 
 .. toctree::
    :maxdepth: 1
@@ -13,3 +12,5 @@ Welcome...
    notebooks/01-qualitychecks.ipynb
    notebooks/03-features.ipynb
    notebooks/04-encoding.ipynb
+
+.. image:: _static/fig1.png
