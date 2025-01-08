@@ -6,8 +6,8 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "podcast-ecog-ds"
-copyright = "2024, Zaid Zada"
+project = "ECoG tutorials"
+copyright = "CC BY"
 author = "Zaid Zada"
 
 # -- General configuration ---------------------------------------------------
@@ -19,7 +19,7 @@ extensions = [
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
-html_logo = "_static/neurohack.png"
+html_logo = "_static/logo.png"
 
 
 # -- Options for HTML output -------------------------------------------------
