@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Training and evaluating encoding models &#8212; ECoG tutorials  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Atlas-based electrode regions" href="05-atlases.html" />
+    <link rel="prev" title="Getting word embeddings" href="03-features.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="Training-and-evaluating-encoding-models">
+<h1>Training and evaluating encoding models<a class="headerlink" href="#Training-and-evaluating-encoding-models" title="Link to this heading">¶</a></h1>
+<p>This tutorial introduces a typical encoding framework for mapping stimulus features onto brain activity during natural language comprehension.</p>
+<p>The previous tutorial walked through extracting two types of linguistic features: syntactic features and language model word embeddings. The <code class="docutils literal notranslate"><span class="pre">podcast-ecog</span></code> dataset comes with several other feature spaces as well. For this tutorial, we will use the LLM contextual embeddings. Encoding models (<a class="reference external" href="https://www.sciencedirect.com/science/article/pii/S1053811910010657?via%3Dihub">Naselaris et al., 2011</a>) use linear regression to map these features onto brain activity. Here, we use the
+<a class="reference external" href="https://gallantlab.org/himalaya/index.html">Himalaya</a> package (<a class="reference external" href="https://doi.org/10.1016/j.neuroimage.2022.119728">Dupré La Tour et al., 2022</a>) to train encoding models using a ridge L2 penalty (also called ridge regression).</p>
+<p>Acknowledgments: This tutorial draws heavily on the <a class="reference external" href="https://github.com/snastase/encling-tutorial/blob/main/encling_tutorial.ipynb">encling tutorial</a> by Samuel A. Nastase.</p>
+<p>First, we’ll import the required Python packages.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">mne</span>
+<span class="kn">import</span> <span class="nn">h5py</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="kn">from</span> <span class="nn">nilearn.plotting</span> <span class="kn">import</span> <span class="n">plot_markers</span>
+<span class="kn">from</span> <span class="nn">mne_bids</span> <span class="kn">import</span> <span class="n">BIDSPath</span>
+
+<span class="kn">from</span> <span class="nn">himalaya.backend</span> <span class="kn">import</span> <span class="n">set_backend</span><span class="p">,</span> <span class="n">get_backend</span>
+<span class="kn">from</span> <span class="nn">himalaya.ridge</span> <span class="kn">import</span> <span class="n">RidgeCV</span>
+<span class="kn">from</span> <span class="nn">himalaya.scoring</span> <span class="kn">import</span> <span class="n">correlation_score</span>
+
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">KFold</span>
+<span class="kn">from</span> <span class="nn">sklearn.pipeline</span> <span class="kn">import</span> <span class="n">make_pipeline</span>
+<span class="kn">from</span> <span class="nn">sklearn.preprocessing</span> <span class="kn">import</span> <span class="n">StandardScaler</span>
+</pre></div>
+</div>
+</div>
+<p>We will set the <a class="reference external" href="https://gallantlab.org/himalaya/_generated/himalaya.backend.set_backend.html#himalaya.backend.set_backend">Himalaya backend</a> to <code class="docutils literal notranslate"><span class="pre">torch_cuda</span></code> so we can utilize a GPU for training, if available.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+    <span class="n">set_backend</span><span class="p">(</span><span class="s2">&quot;torch_cuda&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<section id="Loading-features">
+<h2>Loading features<a class="headerlink" href="#Loading-features" title="Link to this heading">¶</a></h2>
+<p>We will now load two different features. The first is syntactic features constructed using spacy.io (<a class="reference external" href="https://github.com/explosion/spaCy">Honnibal et al., 2020</a>). The second contains contextual word embeddings generated from GPT-2 (<a class="reference external" href="https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf">Radford et al., 2019</a>). The loaded features should be a numpy array with a shape of (number of tokens * feature dimensions). Note that the numbers of tokens
+are different for the two features because of different tokenization schemas.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">embedding_path</span> <span class="o">=</span> <span class="s2">&quot;../../monkey/stimuli/</span><span class="si">%s</span><span class="s2">/states.hdf5&quot;</span>
+
+<span class="n">modelname</span><span class="p">,</span> <span class="n">layer</span> <span class="o">=</span> <span class="s1">&#39;gpt2-xl&#39;</span><span class="p">,</span> <span class="mi">24</span>
+<span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">embedding_path</span> <span class="o">%</span> <span class="n">modelname</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">contextual_embeddings</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;layer-</span><span class="si">{</span><span class="n">layer</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">][</span><span class="o">...</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;LLM embedding matrix has shape: </span><span class="si">{</span><span class="n">contextual_embeddings</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+LLM embedding matrix has shape: (5491, 1600)
+</pre></div></div>
+</div>
+<p>We will also load the stimuli transcripts associated with these features. Both transcripts should contain information about the word, token, start (onset), and end (offset). The contextual word embedding transcript should also include other prediction information extracted from GPT-2, like rank, probability, and entropy. For instance, we can calculate how accurate the model is in predicting the next token in the transcript based on the <code class="docutils literal notranslate"><span class="pre">rank</span></code> column, which are integers that represents the rank
+of the actual token in all the possible tokens of GPT-2.</p>
+<p>Note: Check that the transcript contains the same number of tokens as the features we loaded before.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">transcript_path</span> <span class="o">=</span> <span class="s2">&quot;../../monkey/stimuli/</span><span class="si">%s</span><span class="s2">/transcript.tsv&quot;</span>
+
+<span class="n">df_contextual</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">transcript_path</span> <span class="o">%</span> <span class="n">modelname</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="k">if</span> <span class="s2">&quot;rank&quot;</span> <span class="ow">in</span> <span class="n">df_contextual</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+    <span class="n">model_acc</span> <span class="o">=</span> <span class="p">(</span><span class="n">df_contextual</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model accuracy: </span><span class="si">{</span><span class="n">model_acc</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+<span class="n">df_contextual</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Model accuracy: 30.942%
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>word_idx</th>
+      <th>word</th>
+      <th>start</th>
+      <th>end</th>
+      <th>hftoken</th>
+      <th>token_id</th>
+      <th>rank</th>
+      <th>true_prob</th>
+      <th>top_pred</th>
+      <th>entropy</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>Act</td>
+      <td>3.710</td>
+      <td>3.790</td>
+      <td>ĠAct</td>
+      <td>2191</td>
+      <td>1644</td>
+      <td>0.000012</td>
+      <td>0</td>
+      <td>2.402717</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>one,</td>
+      <td>3.990</td>
+      <td>4.190</td>
+      <td>Ġone</td>
+      <td>530</td>
+      <td>92</td>
+      <td>0.000342</td>
+      <td>352</td>
+      <td>3.732053</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1</td>
+      <td>one,</td>
+      <td>3.990</td>
+      <td>4.190</td>
+      <td>,</td>
+      <td>11</td>
+      <td>3</td>
+      <td>0.059520</td>
+      <td>25</td>
+      <td>4.259335</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2</td>
+      <td>monkey</td>
+      <td>4.651</td>
+      <td>4.931</td>
+      <td>Ġmonkey</td>
+      <td>21657</td>
+      <td>4022</td>
+      <td>0.000018</td>
+      <td>3715</td>
+      <td>6.621269</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>3</td>
+      <td>in</td>
+      <td>4.951</td>
+      <td>5.011</td>
+      <td>Ġin</td>
+      <td>287</td>
+      <td>15</td>
+      <td>0.004237</td>
+      <td>0</td>
+      <td>4.444838</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+<p>When we extracted features, some words are split into separate tokens. Since we only have information of start and end for words, we will align the features from tokens to words for encoding models. Here, we simply average the token features across the same word. Now the features should be a numpy array with a shape of (number of words * feature dimensions).</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">aligned_embeddings</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">df_contextual</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;word_idx&quot;</span><span class="p">):</span> <span class="c1"># group by word index</span>
+    <span class="n">indices</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="n">average_emb</span> <span class="o">=</span> <span class="n">contextual_embeddings</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="c1"># average features</span>
+    <span class="n">aligned_embeddings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">average_emb</span><span class="p">)</span>
+<span class="n">aligned_embeddings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">aligned_embeddings</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;LLM embeddings matrix has shape: </span><span class="si">{</span><span class="n">aligned_embeddings</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+LLM embeddings matrix has shape: (5136, 1600)
+</pre></div></div>
+</div>
+<p>We will also construct a dataframe containing words with their start and end timestamps.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df_word</span> <span class="o">=</span> <span class="n">df_contextual</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;word_idx&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">word</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;last&quot;</span><span class="p">))</span>
+<span class="n">df_word</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>word</th>
+      <th>start</th>
+      <th>end</th>
+    </tr>
+    <tr>
+      <th>word_idx</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>Act</td>
+      <td>3.710</td>
+      <td>3.790</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>one,</td>
+      <td>3.990</td>
+      <td>4.190</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>monkey</td>
+      <td>4.651</td>
+      <td>4.931</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>in</td>
+      <td>4.951</td>
+      <td>5.011</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>the</td>
+      <td>5.051</td>
+      <td>5.111</td>
+    </tr>
+  </tbody>
+</table>
+</div></div>
+</div>
+</section>
+<section id="Loading-brain-data">
+<h2>Loading brain data<a class="headerlink" href="#Loading-brain-data" title="Link to this heading">¶</a></h2>
+<p>Next, we will load the preprocessed high-gamma ECoG data using MNE. Here, we will demonstrate loading data from our third subject.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">edf_path</span> <span class="o">=</span> <span class="n">BIDSPath</span><span class="p">(</span>
+    <span class="n">root</span><span class="o">=</span><span class="s2">&quot;../../monkey/derivatives/ecogprep&quot;</span><span class="p">,</span>
+    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;03&quot;</span><span class="p">,</span>
+    <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;highgamma&quot;</span><span class="p">,</span>
+    <span class="n">extension</span><span class="o">=</span><span class="s2">&quot;.fif&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">edf_path</span> <span class="o">=</span> <span class="n">edf_path</span><span class="o">.</span><span class="n">match</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">raw</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_raw_fif</span><span class="p">(</span><span class="n">edf_path</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">raw</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<script type="text/javascript">
+    const toggleVisibility = (className) => {
+
+  const elements = document.querySelectorAll(`.${className}`)
+
+  elements.forEach(element => {
+    if (element.classList.contains('repr-section-header')) {
+      // Don't collapse the section header row.
+       return
+    }
+    if (element.classList.contains('repr-element-collapsed')) {
+      // Force a reflow to ensure the display change takes effect before removing the class
+      element.classList.remove('repr-element-collapsed')
+      element.offsetHeight // This forces the browser to recalculate layout
+      element.classList.remove('repr-element-faded')
+    } else {
+      // Start transition to hide the element
+      element.classList.add('repr-element-faded')
+      element.addEventListener('transitionend', handler = (e) => {
+        if (e.propertyName === 'opacity' && getComputedStyle(element).opacity === '0.2') {
+          element.classList.add('repr-element-collapsed')
+          element.removeEventListener('transitionend', handler)
+        }
+      });
+    }
+  });
+
+  // Take care of button (adjust caret)
+  const button = document.querySelectorAll(`.repr-section-header.${className} > th.repr-section-toggle-col > button`)[0]
+  button.classList.toggle('collapsed')
+
+  // Take care of the tooltip of the section header row
+  const sectionHeaderRow = document.querySelectorAll(`tr.repr-section-header.${className}`)[0]
+  sectionHeaderRow.classList.toggle('collapsed')
+  sectionHeaderRow.title = sectionHeaderRow.title === 'Hide section' ? 'Show section' : 'Hide section'
+}
+</script>
+
+<style type="text/css">
+    table.repr.table.table-hover.table-striped.table-sm.table-responsive.small {
+  /* Don't make rows wider than they need to be. */
+  display: inline;
+}
+
+table > tbody > tr.repr-element > td {
+  /* Apply a tighter layout to the table cells. */
+  padding-top: 0.1rem;
+  padding-bottom: 0.1rem;
+  padding-right: 1rem;
+}
+
+table > tbody > tr > td.repr-section-toggle-col {
+  /* Remove background and border of the first cell in every row
+     (this row is only used for the collapse / uncollapse caret)
+
+     TODO: Need to find a good solution for VS Code that works in both
+           light and dark mode. */
+  border-color: transparent;
+  --bs-table-accent-bg: transparent;
+}
+
+tr.repr-section-header {
+  /* Remove stripes from section header rows */
+  background-color: transparent;
+  border-color: transparent;
+  --bs-table-striped-bg: transparent;
+  cursor: pointer;
+}
+
+tr.repr-section-header > th {
+  text-align: left !important;
+  vertical-align: middle;
+}
+
+.repr-element, tr.repr-element > td {
+  opacity: 1;
+  text-align: left !important;
+}
+
+.repr-element-faded {
+  transition: 0.3s ease;
+  opacity: 0.2;
+}
+
+.repr-element-collapsed {
+  display: none;
+}
+
+/* Collapse / uncollapse button and the caret it contains. */
+.repr-section-toggle-col button {
+  cursor: pointer;
+  width: 1rem;
+  background-color: transparent;
+  border-color: transparent;
+}
+
+span.collapse-uncollapse-caret {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+  background-repeat: no-repeat;
+  background-position: left;
+  background-size: contain;
+}
+
+/* The collapse / uncollapse carets were copied from the free Font Awesome collection and adjusted. */
+
+/* Default to black carets for light mode */
+.repr-section-toggle-col > button.collapsed > span.collapse-uncollapse-caret {
+  background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="black" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>');
+}
+
+.repr-section-toggle-col
+  > button:not(.collapsed)
+  > span.collapse-uncollapse-caret {
+  background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="black" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>');
+}
+
+/* Use white carets for dark mode */
+@media (prefers-color-scheme: dark) {
+  .repr-section-toggle-col > button.collapsed > span.collapse-uncollapse-caret {
+    background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="white" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>');
+  }
+
+  .repr-section-toggle-col
+    > button:not(.collapsed)
+    > span.collapse-uncollapse-caret {
+    background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="white" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>');
+  }
+}
+
+.channel-names-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  cursor: pointer;
+  color: #0d6efd;
+}
+
+.channel-names-btn:hover {
+  color: #0a58ca;
+}
+</style>
+
+
+
+<table class="repr table table-hover table-striped table-sm table-responsive small">
+
+
+
+
+
+
+
+
+<tr class="repr-section-header general-e2c6a011-dc66-4ad0-9abe-8b0011ec061b"  title="Hide section"
+    onclick="toggleVisibility('general-e2c6a011-dc66-4ad0-9abe-8b0011ec061b')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>General</strong>
+    </th>
+</tr>
+
+<tr class="repr-element general-e2c6a011-dc66-4ad0-9abe-8b0011ec061b ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Filename(s)</td>
+    <td>
+
+        sub-03_task-monkey_desc-highgamma_ieeg.fif
+
+
+    </td>
+</tr>
+
+<tr class="repr-element general-e2c6a011-dc66-4ad0-9abe-8b0011ec061b ">
+    <td class="repr-section-toggle-col"></td>
+    <td>MNE object type</td>
+    <td>Raw</td>
+</tr>
+<tr class="repr-element general-e2c6a011-dc66-4ad0-9abe-8b0011ec061b ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Measurement date</td>
+
+    <td>2019-03-11 at 10:54:21 UTC</td>
+
+</tr>
+<tr class="repr-element general-e2c6a011-dc66-4ad0-9abe-8b0011ec061b ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Participant</td>
+
+
+    <td>sub-03</td>
+
+
+</tr>
+<tr class="repr-element general-e2c6a011-dc66-4ad0-9abe-8b0011ec061b ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Experimenter</td>
+
+    <td>Unknown</td>
+
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-section-header acquisition-f839ecd1-cb4a-4a24-bb3d-a60383c49811"
+    title="Hide section"  onclick="toggleVisibility('acquisition-f839ecd1-cb4a-4a24-bb3d-a60383c49811')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Acquisition</strong>
+    </th>
+</tr>
+
+<tr class="repr-element acquisition-f839ecd1-cb4a-4a24-bb3d-a60383c49811 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Duration</td>
+    <td>00:29:60 (HH:MM:SS)</td>
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-element acquisition-f839ecd1-cb4a-4a24-bb3d-a60383c49811 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Sampling frequency</td>
+    <td>512.00 Hz</td>
+</tr>
+
+
+<tr class="repr-element acquisition-f839ecd1-cb4a-4a24-bb3d-a60383c49811 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Time points</td>
+    <td>921,600</td>
+</tr>
+
+
+
+
+
+
+
+
+
+
+<tr class="repr-section-header channels-c91b88b8-4426-4bca-b950-7eac9d0e13f2"  title="Hide section"
+    onclick="toggleVisibility('channels-c91b88b8-4426-4bca-b950-7eac9d0e13f2')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Channels</strong>
+    </th>
+</tr>
+
+
+<tr class="repr-element channels-c91b88b8-4426-4bca-b950-7eac9d0e13f2 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>ECoG</td>
+    <td>
+        <button class="channel-names-btn" onclick="alert('Good ECoG:\n\nLGA2, LGA3, LGA4, LGA5, LGA6, LGA7, LGA8, LGA9, LGA10, LGA11, LGA12, LGA13, LGA14, LGA15, LGA16, LGA17, LGA18, LGA19, LGA20, LGA21, LGA22, LGA23, LGA24, LGA25, LGA26, LGA27, LGA28, LGA29, LGA30, LGA31, LGA32, LGA33, LGA34, LGA35, LGA36, LGA37, LGA38, LGA39, LGA40, LGA41, LGA42, LGA43, LGA44, LGA45, LGA46, LGA47, LGA48, LGA49, LGA50, LGA51, LGA52, LGA53, LGA54, LGA55, LGA56, LGA57, LGA58, LGA59, LGA60, LGA61, LGA62, LGA63, LGA64, LGB65, LGB66, LGB67, LGB68, LGB69, LGB70, LGB71, LGB72, LGB73, LGB74, LGB75, LGB76, LGB77, LGB78, LGB79, LGB80, LGB81, LGB82, LGB83, LGB84, LGB85, LGB86, LGB87, LGB88, LGB89, LGB90, LGB91, LGB92, LGB93, LGB94, LGB95, LGB96, LGB97, LGB98, LGB99, LGB100, LGB101, LGB102, LGB103, LGB104, LGB105, LGB106, LGB107, LGB108, LGB109, LGB110, LGB111, LGB112, LGB113, LGB114, LGB115, LGB116, LGB117, LGB118, LGB119, LGB120, LGB121, LGB122, LGB123, LGB124, LGB125, LGB126, LGB127, LGB128, LAT1, LAT2, LAT3, LAT4, LMT1, LMT2, LMT3, LMT4, LPT1, LPT2, LPT3, LPT4, LO1, LO2, LO7, LO8, LP1, LP2, LP5, LP6, LP7, LF1, LF2, LF5, LF6, LOF1, LOF2, LOF3, LOF4, ROF1, ROF2, ROF3, ROF4, RAT2, RAT3, RAT4, RAT5, RAT6, RMT1, RMT2, RMT3, RMT4, RPT1, RPT2, RPT3, RPT4, RO1, RO2, RO7, RO8, DLAMT2, DLAMT3, DLAMT4, DLAMT5, DLAMT6, DLAMT8, DLPMT1, DLPMT2, DLPMT3, DLPMT4, DLPMT5, DLPMT6, DLPMT7, DLPMT8, DLAI1, DLAI2, DLAI3, DLAI4, DLPI1, DLPI2, DLPI3, DLPI4, DLAL2, DLAL3, DLAL5, DLAL6, DLAL7, DLPL1, DLPL2, DLPL3, DLPL4, DLPL5, DLPL6, DLPL7, DLPL9, DRAMT1, DRAMT2, DRAMT3, DRAMT4, DRAMT5, DRAMT6, DRAMT8, DRPMT1, DRPMT2, DRPMT3, DRPMT4, DRPMT5, DRPMT6, DRPMT7, DRPMT8, DRAI1, DRAI2, DRAI3, DRAI4, DRPI1, DRPI2, DRPI3, DRPI4')" title="(Click to open in popup)&#13;&#13;LGA2, LGA3, LGA4, LGA5, LGA6, LGA7, LGA8, LGA9, LGA10, LGA11, LGA12, LGA13, LGA14, LGA15, LGA16, LGA17, LGA18, LGA19, LGA20, LGA21, LGA22, LGA23, LGA24, LGA25, LGA26, LGA27, LGA28, LGA29, LGA30, LGA31, LGA32, LGA33, LGA34, LGA35, LGA36, LGA37, LGA38, LGA39, LGA40, LGA41, LGA42, LGA43, LGA44, LGA45, LGA46, LGA47, LGA48, LGA49, LGA50, LGA51, LGA52, LGA53, LGA54, LGA55, LGA56, LGA57, LGA58, LGA59, LGA60, LGA61, LGA62, LGA63, LGA64, LGB65, LGB66, LGB67, LGB68, LGB69, LGB70, LGB71, LGB72, LGB73, LGB74, LGB75, LGB76, LGB77, LGB78, LGB79, LGB80, LGB81, LGB82, LGB83, LGB84, LGB85, LGB86, LGB87, LGB88, LGB89, LGB90, LGB91, LGB92, LGB93, LGB94, LGB95, LGB96, LGB97, LGB98, LGB99, LGB100, LGB101, LGB102, LGB103, LGB104, LGB105, LGB106, LGB107, LGB108, LGB109, LGB110, LGB111, LGB112, LGB113, LGB114, LGB115, LGB116, LGB117, LGB118, LGB119, LGB120, LGB121, LGB122, LGB123, LGB124, LGB125, LGB126, LGB127, LGB128, LAT1, LAT2, LAT3, LAT4, LMT1, LMT2, LMT3, LMT4, LPT1, LPT2, LPT3, LPT4, LO1, LO2, LO7, LO8, LP1, LP2, LP5, LP6, LP7, LF1, LF2, LF5, LF6, LOF1, LOF2, LOF3, LOF4, ROF1, ROF2, ROF3, ROF4, RAT2, RAT3, RAT4, RAT5, RAT6, RMT1, RMT2, RMT3, RMT4, RPT1, RPT2, RPT3, RPT4, RO1, RO2, RO7, RO8, DLAMT2, DLAMT3, DLAMT4, DLAMT5, DLAMT6, DLAMT8, DLPMT1, DLPMT2, DLPMT3, DLPMT4, DLPMT5, DLPMT6, DLPMT7, DLPMT8, DLAI1, DLAI2, DLAI3, DLAI4, DLPI1, DLPI2, DLPI3, DLPI4, DLAL2, DLAL3, DLAL5, DLAL6, DLAL7, DLPL1, DLPL2, DLPL3, DLPL4, DLPL5, DLPL6, DLPL7, DLPL9, DRAMT1, DRAMT2, DRAMT3, DRAMT4, DRAMT5, DRAMT6, DRAMT8, DRPMT1, DRPMT2, DRPMT3, DRPMT4, DRPMT5, DRPMT6, DRPMT7, DRPMT8, DRAI1, DRAI2, DRAI3, DRAI4, DRPI1, DRPI2, DRPI3, DRPI4">
+            235
+        </button>
+
+
+    </td>
+</tr>
+
+
+<tr class="repr-element channels-c91b88b8-4426-4bca-b950-7eac9d0e13f2 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Head & sensor digitization</td>
+
+    <td>253 points</td>
+
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-section-header filters-4678d41e-846c-4029-be58-3a5fb889133f"  title="Hide section"
+    onclick="toggleVisibility('filters-4678d41e-846c-4029-be58-3a5fb889133f')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Filters</strong>
+    </th>
+</tr>
+
+<tr class="repr-element filters-4678d41e-846c-4029-be58-3a5fb889133f ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Highpass</td>
+    <td>70.00 Hz</td>
+</tr>
+
+
+<tr class="repr-element filters-4678d41e-846c-4029-be58-3a5fb889133f ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Lowpass</td>
+    <td>200.00 Hz</td>
+</tr>
+
+
+</table></div>
+</div>
+<p>We will map the start information (in seconds) of each word in the dataframe onto the brain signal data by multiplying by the sampling rate. Here the first column of <code class="docutils literal notranslate"><span class="pre">events</span></code> mark the start of each word on the brain signal data.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">events</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">df_word</span><span class="p">),</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+<span class="n">events</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df_word</span><span class="o">.</span><span class="n">start</span> <span class="o">*</span> <span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;sfreq&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="n">events</span><span class="o">.</span><span class="n">shape</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(5136, 3)
+</pre></div></div>
+</div>
+<p>Then we’ll take advantage of MNE’s tools for creating epochs around stimulus events, which here are the starts (onsets) of each word, to visualize brain signal that respond to word onsets. Here, we take a fixed-width window ranging from -2 seconds to +2 seconds relative to word onset. Since the sampling rate is 512 Hz (512 samples per second), we have 2049 lags total. The ECoG data is a numpy array with the shape of (number of words * number of ECoG electrodes * number of lags).</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">epochs</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">Epochs</span><span class="p">(</span>
+    <span class="n">raw</span><span class="p">,</span>
+    <span class="n">events</span><span class="p">,</span>
+    <span class="n">tmin</span><span class="o">=-</span><span class="mf">2.0</span><span class="p">,</span>
+    <span class="n">tmax</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+    <span class="n">baseline</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">proj</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">event_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">preload</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">event_repeated</span><span class="o">=</span><span class="s2">&quot;merge&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Epochs object has a shape of: </span><span class="si">{</span><span class="n">epochs</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Not setting metadata
+5136 matching events found
+No baseline correction applied
+Loading data for 5136 events and 2049 original time points ...
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/tmp/ipykernel_3774742/3482921024.py:1: RuntimeWarning: The events passed to the Epochs constructor are not chronologically ordered.
+  epochs = mne.Epochs(
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+6 bad epochs dropped
+Epochs object has a shape of: (5130, 235, 2049)
+</pre></div></div>
+</div>
+<p>Next, we’ll downsample the temporal resolution to 32 Hz, which reduces the number of lags to 32 * 4 = 128.</p>
+<div class="admonition note">
+<p>This code block may take ~3 minutes to run.</p>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">epochs</span> <span class="o">=</span> <span class="n">epochs</span><span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="n">sfreq</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">npad</span><span class="o">=</span><span class="s1">&#39;auto&#39;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;fft&#39;</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="s1">&#39;hamming&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Epochs object has a shape of: </span><span class="si">{</span><span class="n">epochs</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Epochs object has a shape of: (5130, 235, 128)
+</pre></div></div>
+</div>
+</section>
+<section id="Setting-up-feature-and-brain-data">
+<h2>Setting up feature and brain data<a class="headerlink" href="#Setting-up-feature-and-brain-data" title="Link to this heading">¶</a></h2>
+<p>Now we have both the features and the ECoG data ready. We plan to fit encoding models at each electrode and for each lag, so we’ll reshape our target matrix <code class="docutils literal notranslate"><span class="pre">Y</span></code> to horizontally stack both electrodes and lags along the second dimension.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">epochs_data</span> <span class="o">=</span> <span class="n">epochs</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">epochs_data</span> <span class="o">=</span> <span class="n">epochs_data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">epochs</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ECoG data matrix shape: </span><span class="si">{</span><span class="n">epochs_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+ECoG data matrix shape: (5130, 30080)
+</pre></div></div>
+</div>
+<p>We will also align our features with the ECoG data.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">selected_df</span> <span class="o">=</span> <span class="n">df_word</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">epochs</span><span class="o">.</span><span class="n">selection</span><span class="p">]</span>
+<span class="n">averaged_embeddings</span> <span class="o">=</span> <span class="n">aligned_embeddings</span><span class="p">[</span><span class="n">epochs</span><span class="o">.</span><span class="n">selection</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">averaged_embeddings</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(5130, 1600)
+</pre></div></div>
+</div>
+<p>We will change the float precision to float32 for all data to take advantage of the GPU memory and computational speed.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">X</span> <span class="o">=</span> <span class="n">averaged_embeddings</span>
+<span class="n">Y</span> <span class="o">=</span> <span class="n">epochs_data</span>
+
+<span class="k">if</span> <span class="s2">&quot;torch&quot;</span> <span class="ow">in</span> <span class="n">get_backend</span><span class="p">()</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">Y</span> <span class="o">=</span> <span class="n">Y</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+<span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">Y</span><span class="o">.</span><span class="n">shape</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+((5130, 1600), (5130, 30080))
+</pre></div></div>
+</div>
+</section>
+<section id="Building-encoding-models">
+<h2>Building encoding models<a class="headerlink" href="#Building-encoding-models" title="Link to this heading">¶</a></h2>
+<p>Now, we will use ridge regression to estimate the encoding model. We create a model pipeline uisng <code class="docutils literal notranslate"><span class="pre">sklearn</span></code>, which includes a <a class="reference external" href="https://scikit-learn.org/dev/modules/generated/sklearn.preprocessing.StandardScaler.html">StandardScaler</a> that standardizes features (X), and a <a class="reference external" href="https://gallantlab.org/himalaya/_generated/himalaya.ridge.RidgeCV.html">RidgeCV</a> model, which performs ridge regression with cross-validation over our specificed alpha values.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">alphas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="c1"># specify alpha values</span>
+<span class="n">inner_cv</span> <span class="o">=</span> <span class="n">KFold</span><span class="p">(</span><span class="n">n_splits</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="c1"># inner 5-fold cross-validation setup</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">make_pipeline</span><span class="p">(</span>
+    <span class="n">StandardScaler</span><span class="p">(),</span> <span class="n">RidgeCV</span><span class="p">(</span><span class="n">alphas</span><span class="p">,</span> <span class="n">fit_intercept</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="n">inner_cv</span><span class="p">)</span> <span class="c1"># pipeline</span>
+<span class="p">)</span>
+<span class="n">model</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<style>#sk-container-id-1 {
+  /* Definition of color scheme common for light and dark mode */
+  --sklearn-color-text: black;
+  --sklearn-color-line: gray;
+  /* Definition of color scheme for unfitted estimators */
+  --sklearn-color-unfitted-level-0: #fff5e6;
+  --sklearn-color-unfitted-level-1: #f6e4d2;
+  --sklearn-color-unfitted-level-2: #ffe0b3;
+  --sklearn-color-unfitted-level-3: chocolate;
+  /* Definition of color scheme for fitted estimators */
+  --sklearn-color-fitted-level-0: #f0f8ff;
+  --sklearn-color-fitted-level-1: #d4ebff;
+  --sklearn-color-fitted-level-2: #b3dbfd;
+  --sklearn-color-fitted-level-3: cornflowerblue;
+
+  /* Specific color for light theme */
+  --sklearn-color-text-on-default-background: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, black)));
+  --sklearn-color-background: var(--sg-background-color, var(--theme-background, var(--jp-layout-color0, white)));
+  --sklearn-color-border-box: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, black)));
+  --sklearn-color-icon: #696969;
+
+  @media (prefers-color-scheme: dark) {
+    /* Redefinition of color scheme for dark theme */
+    --sklearn-color-text-on-default-background: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, white)));
+    --sklearn-color-background: var(--sg-background-color, var(--theme-background, var(--jp-layout-color0, #111)));
+    --sklearn-color-border-box: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, white)));
+    --sklearn-color-icon: #878787;
+  }
+}
+
+#sk-container-id-1 {
+  color: var(--sklearn-color-text);
+}
+
+#sk-container-id-1 pre {
+  padding: 0;
+}
+
+#sk-container-id-1 input.sk-hidden--visually {
+  border: 0;
+  clip: rect(1px 1px 1px 1px);
+  clip: rect(1px, 1px, 1px, 1px);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+}
+
+#sk-container-id-1 div.sk-dashed-wrapped {
+  border: 1px dashed var(--sklearn-color-line);
+  margin: 0 0.4em 0.5em 0.4em;
+  box-sizing: border-box;
+  padding-bottom: 0.4em;
+  background-color: var(--sklearn-color-background);
+}
+
+#sk-container-id-1 div.sk-container {
+  /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
+     but bootstrap.min.css set `[hidden] { display: none !important; }`
+     so we also need the `!important` here to be able to override the
+     default hidden behavior on the sphinx rendered scikit-learn.org.
+     See: https://github.com/scikit-learn/scikit-learn/issues/21755 */
+  display: inline-block !important;
+  position: relative;
+}
+
+#sk-container-id-1 div.sk-text-repr-fallback {
+  display: none;
+}
+
+div.sk-parallel-item,
+div.sk-serial,
+div.sk-item {
+  /* draw centered vertical line to link estimators */
+  background-image: linear-gradient(var(--sklearn-color-text-on-default-background), var(--sklearn-color-text-on-default-background));
+  background-size: 2px 100%;
+  background-repeat: no-repeat;
+  background-position: center center;
+}
+
+/* Parallel-specific style estimator block */
+
+#sk-container-id-1 div.sk-parallel-item::after {
+  content: "";
+  width: 100%;
+  border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
+  flex-grow: 1;
+}
+
+#sk-container-id-1 div.sk-parallel {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  background-color: var(--sklearn-color-background);
+  position: relative;
+}
+
+#sk-container-id-1 div.sk-parallel-item {
+  display: flex;
+  flex-direction: column;
+}
+
+#sk-container-id-1 div.sk-parallel-item:first-child::after {
+  align-self: flex-end;
+  width: 50%;
+}
+
+#sk-container-id-1 div.sk-parallel-item:last-child::after {
+  align-self: flex-start;
+  width: 50%;
+}
+
+#sk-container-id-1 div.sk-parallel-item:only-child::after {
+  width: 0;
+}
+
+/* Serial-specific style estimator block */
+
+#sk-container-id-1 div.sk-serial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: var(--sklearn-color-background);
+  padding-right: 1em;
+  padding-left: 1em;
+}
+
+
+/* Toggleable style: style used for estimator/Pipeline/ColumnTransformer box that is
+clickable and can be expanded/collapsed.
+- Pipeline and ColumnTransformer use this feature and define the default style
+- Estimators will overwrite some part of the style using the `sk-estimator` class
+*/
+
+/* Pipeline and ColumnTransformer style (default) */
+
+#sk-container-id-1 div.sk-toggleable {
+  /* Default theme specific background. It is overwritten whether we have a
+  specific estimator or a Pipeline/ColumnTransformer */
+  background-color: var(--sklearn-color-background);
+}
+
+/* Toggleable label */
+#sk-container-id-1 label.sk-toggleable__label {
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  margin-bottom: 0;
+  padding: 0.5em;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+#sk-container-id-1 label.sk-toggleable__label-arrow:before {
+  /* Arrow on the left of the label */
+  content: "▸";
+  float: left;
+  margin-right: 0.25em;
+  color: var(--sklearn-color-icon);
+}
+
+#sk-container-id-1 label.sk-toggleable__label-arrow:hover:before {
+  color: var(--sklearn-color-text);
+}
+
+/* Toggleable content - dropdown */
+
+#sk-container-id-1 div.sk-toggleable__content {
+  max-height: 0;
+  max-width: 0;
+  overflow: hidden;
+  text-align: left;
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content.fitted {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content pre {
+  margin: 0.2em;
+  border-radius: 0.25em;
+  color: var(--sklearn-color-text);
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content.fitted pre {
+  /* unfitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+#sk-container-id-1 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+  /* Expand drop-down */
+  max-height: 200px;
+  max-width: 100%;
+  overflow: auto;
+}
+
+#sk-container-id-1 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+  content: "▾";
+}
+
+/* Pipeline/ColumnTransformer-specific style */
+
+#sk-container-id-1 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Estimator-specific style */
+
+/* Colorize estimator box */
+#sk-container-id-1 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+#sk-container-id-1 div.sk-label label.sk-toggleable__label,
+#sk-container-id-1 div.sk-label label {
+  /* The background is the default theme color */
+  color: var(--sklearn-color-text-on-default-background);
+}
+
+/* On hover, darken the color of the background */
+#sk-container-id-1 div.sk-label:hover label.sk-toggleable__label {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+/* Label box, darken color on hover, fitted */
+#sk-container-id-1 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Estimator label */
+
+#sk-container-id-1 div.sk-label label {
+  font-family: monospace;
+  font-weight: bold;
+  display: inline-block;
+  line-height: 1.2em;
+}
+
+#sk-container-id-1 div.sk-label-container {
+  text-align: center;
+}
+
+/* Estimator-specific */
+#sk-container-id-1 div.sk-estimator {
+  font-family: monospace;
+  border: 1px dotted var(--sklearn-color-border-box);
+  border-radius: 0.25em;
+  box-sizing: border-box;
+  margin-bottom: 0.5em;
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+/* on hover */
+#sk-container-id-1 div.sk-estimator:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Specification for estimator info (e.g. "i" and "?") */
+
+/* Common style for "i" and "?" */
+
+.sk-estimator-doc-link,
+a:link.sk-estimator-doc-link,
+a:visited.sk-estimator-doc-link {
+  float: right;
+  font-size: smaller;
+  line-height: 1em;
+  font-family: monospace;
+  background-color: var(--sklearn-color-background);
+  border-radius: 1em;
+  height: 1em;
+  width: 1em;
+  text-decoration: none !important;
+  margin-left: 1ex;
+  /* unfitted */
+  border: var(--sklearn-color-unfitted-level-1) 1pt solid;
+  color: var(--sklearn-color-unfitted-level-1);
+}
+
+.sk-estimator-doc-link.fitted,
+a:link.sk-estimator-doc-link.fitted,
+a:visited.sk-estimator-doc-link.fitted {
+  /* fitted */
+  border: var(--sklearn-color-fitted-level-1) 1pt solid;
+  color: var(--sklearn-color-fitted-level-1);
+}
+
+/* On hover */
+div.sk-estimator:hover .sk-estimator-doc-link:hover,
+.sk-estimator-doc-link:hover,
+div.sk-label-container:hover .sk-estimator-doc-link:hover,
+.sk-estimator-doc-link:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+div.sk-estimator.fitted:hover .sk-estimator-doc-link.fitted:hover,
+.sk-estimator-doc-link.fitted:hover,
+div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
+.sk-estimator-doc-link.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+/* Span, style for the box shown on hovering the info icon */
+.sk-estimator-doc-link span {
+  display: none;
+  z-index: 9999;
+  position: relative;
+  font-weight: normal;
+  right: .2ex;
+  padding: .5ex;
+  margin: .5ex;
+  width: min-content;
+  min-width: 20ex;
+  max-width: 50ex;
+  color: var(--sklearn-color-text);
+  box-shadow: 2pt 2pt 4pt #999;
+  /* unfitted */
+  background: var(--sklearn-color-unfitted-level-0);
+  border: .5pt solid var(--sklearn-color-unfitted-level-3);
+}
+
+.sk-estimator-doc-link.fitted span {
+  /* fitted */
+  background: var(--sklearn-color-fitted-level-0);
+  border: var(--sklearn-color-fitted-level-3);
+}
+
+.sk-estimator-doc-link:hover span {
+  display: block;
+}
+
+/* "?"-specific style due to the `<a>` HTML tag */
+
+#sk-container-id-1 a.estimator_doc_link {
+  float: right;
+  font-size: 1rem;
+  line-height: 1em;
+  font-family: monospace;
+  background-color: var(--sklearn-color-background);
+  border-radius: 1rem;
+  height: 1rem;
+  width: 1rem;
+  text-decoration: none;
+  /* unfitted */
+  color: var(--sklearn-color-unfitted-level-1);
+  border: var(--sklearn-color-unfitted-level-1) 1pt solid;
+}
+
+#sk-container-id-1 a.estimator_doc_link.fitted {
+  /* fitted */
+  border: var(--sklearn-color-fitted-level-1) 1pt solid;
+  color: var(--sklearn-color-fitted-level-1);
+}
+
+/* On hover */
+#sk-container-id-1 a.estimator_doc_link:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+#sk-container-id-1 a.estimator_doc_link.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-3);
+}
+</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>Pipeline(steps=[(&#x27;standardscaler&#x27;, StandardScaler()),
+                (&#x27;ridgecv&#x27;,
+                 RidgeCV(alphas=array([1.e+01, 1.e+02, 1.e+03, 1.e+04, 1.e+05, 1.e+06, 1.e+07, 1.e+08,
+       1.e+09, 1.e+10]),
+                         cv=KFold(n_splits=5, random_state=None, shuffle=False),
+                         fit_intercept=True))])</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item sk-dashed-wrapped"><div class="sk-label-container"><div class="sk-label  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" ><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;&nbsp;Pipeline<a class="sk-estimator-doc-link " rel="noreferrer" target="_blank" href="https://scikit-learn.org/1.5/modules/generated/sklearn.pipeline.Pipeline.html">?<span>Documentation for Pipeline</span></a><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>Pipeline(steps=[(&#x27;standardscaler&#x27;, StandardScaler()),
+                (&#x27;ridgecv&#x27;,
+                 RidgeCV(alphas=array([1.e+01, 1.e+02, 1.e+03, 1.e+04, 1.e+05, 1.e+06, 1.e+07, 1.e+08,
+       1.e+09, 1.e+10]),
+                         cv=KFold(n_splits=5, random_state=None, shuffle=False),
+                         fit_intercept=True))])</pre></div> </div></div><div class="sk-serial"><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-2" type="checkbox" ><label for="sk-estimator-id-2" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;StandardScaler<a class="sk-estimator-doc-link " rel="noreferrer" target="_blank" href="https://scikit-learn.org/1.5/modules/generated/sklearn.preprocessing.StandardScaler.html">?<span>Documentation for StandardScaler</span></a></label><div class="sk-toggleable__content "><pre>StandardScaler()</pre></div> </div></div><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-3" type="checkbox" ><label for="sk-estimator-id-3" class="sk-toggleable__label  sk-toggleable__label-arrow ">RidgeCV</label><div class="sk-toggleable__content "><pre>RidgeCV(alphas=array([1.e+01, 1.e+02, 1.e+03, 1.e+04, 1.e+05, 1.e+06, 1.e+07, 1.e+08,
+       1.e+09, 1.e+10]),
+        cv=KFold(n_splits=5, random_state=None, shuffle=False),
+        fit_intercept=True)</pre></div> </div></div></div></div></div></div></div>
+</div>
+</section>
+<section id="Training-encoding-models">
+<h2>Training encoding models<a class="headerlink" href="#Training-encoding-models" title="Link to this heading">¶</a></h2>
+<p>While <code class="docutils literal notranslate"><span class="pre">RidgeCV</span></code> contains an inner cross-validation setup to find the best alpha, we will also set up an outer cross-validation loop to evaluate our encoding model. Here, we will use k = 2, meaning we will train on half of the data and evaluate on the other half. Within each fold, we will split the train and test dataset. Then we will standardize <code class="docutils literal notranslate"><span class="pre">Y</span></code> the same way we standardize <code class="docutils literal notranslate"><span class="pre">X</span></code> in the pipeline. We will then fit our model on the training dataset and use it to predict for the testing
+dataset. For evaluation, we will calculate correlation scores between <code class="docutils literal notranslate"><span class="pre">Y_preds</span></code>, the ECoG signal predicted by our model, and <code class="docutils literal notranslate"><span class="pre">Y_test</span></code>, the actual ECoG signal. The encoding model is trained and evaluated for each electrode and each lag.</p>
+<div class="admonition note">
+<p>This code block may take a while to run. Make sure you are using a GPU if you have one (verify by running <code class="docutils literal notranslate"><span class="pre">nvidia-smi</span></code>). You may also consider resampling the epochs even further to use fewer lags, and/or choose specific electrodes to run to use fewer electrodes.</p>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">epochs_shape</span> <span class="o">=</span> <span class="n">epochs</span><span class="o">.</span><span class="n">_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="c1"># number of electrodes * number of lags</span>
+
+<span class="k">def</span> <span class="nf">train_encoding</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">):</span>
+
+    <span class="n">corrs</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1"># empty array to store correlation results</span>
+    <span class="n">kfold</span> <span class="o">=</span> <span class="n">KFold</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="c1"># outer 2-fold cross-validation setup</span>
+    <span class="k">for</span> <span class="n">train_index</span><span class="p">,</span> <span class="n">test_index</span> <span class="ow">in</span> <span class="n">kfold</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">X</span><span class="p">):</span> <span class="c1"># loop through folds</span>
+
+        <span class="c1"># Split train and test datasets</span>
+        <span class="n">X1_train</span><span class="p">,</span> <span class="n">X1_test</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">train_index</span><span class="p">],</span> <span class="n">X</span><span class="p">[</span><span class="n">test_index</span><span class="p">]</span>
+        <span class="n">Y_train</span><span class="p">,</span> <span class="n">Y_test</span> <span class="o">=</span> <span class="n">Y</span><span class="p">[</span><span class="n">train_index</span><span class="p">],</span> <span class="n">Y</span><span class="p">[</span><span class="n">test_index</span><span class="p">]</span>
+
+        <span class="c1"># Standardize Y</span>
+        <span class="n">scaler</span> <span class="o">=</span> <span class="n">StandardScaler</span><span class="p">()</span>
+        <span class="n">Y_train</span> <span class="o">=</span> <span class="n">scaler</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">Y_train</span><span class="p">)</span>
+        <span class="n">Y_test</span> <span class="o">=</span> <span class="n">scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">Y_test</span><span class="p">)</span>
+
+        <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X1_train</span><span class="p">,</span> <span class="n">Y_train</span><span class="p">)</span> <span class="c1"># Fit pipeline with transforms and ridge estimator</span>
+        <span class="n">Y_preds</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X1_test</span><span class="p">)</span> <span class="c1"># Use trained model to predict on test set</span>
+        <span class="n">corr</span> <span class="o">=</span> <span class="n">correlation_score</span><span class="p">(</span><span class="n">Y_test</span><span class="p">,</span> <span class="n">Y_preds</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">epochs_shape</span><span class="p">)</span> <span class="c1"># Compute correlation score</span>
+
+        <span class="k">if</span> <span class="s2">&quot;torch&quot;</span> <span class="ow">in</span> <span class="n">get_backend</span><span class="p">()</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span> <span class="c1"># if using gpu, transform tensor back to numpy</span>
+            <span class="n">corr</span> <span class="o">=</span> <span class="n">corr</span><span class="o">.</span><span class="n">numpy</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">corrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">corr</span><span class="p">)</span> <span class="c1"># append fold correlation results to final results</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">corrs</span><span class="p">)</span>
+
+<span class="c1"># set_backend(&quot;torch&quot;) # resort to torch or numpy if cuda out of memory</span>
+<span class="n">corrs_embedding</span> <span class="o">=</span> <span class="n">train_encoding</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Encoding performance correlating matrix shape: </span><span class="si">{</span><span class="n">corrs_embedding</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Encoding performance correlating matrix shape: (2, 235, 128)
+</pre></div></div>
+</div>
+</section>
+<section id="Plotting-encoding-performance">
+<h2>Plotting encoding performance<a class="headerlink" href="#Plotting-encoding-performance" title="Link to this heading">¶</a></h2>
+<p>We trained and evaluated many encoding models. We have 235 electrodes and 128 lags for each, and on top of that we split the podcast into two 15-minute chunks to train on one half and test on the other. Thus, we have correlations for each of these in one array. Below, we will summarize these results in two ways: spatially and temporally.</p>
+<p>First we summarize spatially by averaging over all electrodes and looking at the average temporal pattern of correlations. We notice that encoding performance increases after word onset and is lower near ± 2 seconds.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">lags</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span> <span class="o">/</span> <span class="mi">512</span> <span class="c1"># specify the lags</span>
+<span class="n">mean</span> <span class="o">=</span> <span class="n">corrs_embedding</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">err</span> <span class="o">=</span> <span class="n">corrs_embedding</span><span class="o">.</span><span class="n">std</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">corrs_embedding</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]))</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lags</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">lags</span><span class="p">,</span> <span class="n">mean</span> <span class="o">-</span> <span class="n">err</span><span class="p">,</span> <span class="n">mean</span> <span class="o">+</span> <span class="n">err</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;lag (s)&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;encoding performance (r ± sem)&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="p">(</span><span class="mf">.9</span><span class="p">,</span> <span class="mf">.9</span><span class="p">,</span> <span class="mf">.9</span><span class="p">),</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="p">(</span><span class="mf">.9</span><span class="p">,</span> <span class="mf">.9</span><span class="p">,</span> <span class="mf">.9</span><span class="p">),</span> <span class="n">ls</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_04-encoding_38_0.png" src="../_images/notebooks_04-encoding_38_0.png" />
+</div>
+</div>
+<p>Next we summarize temporally by selecting the maximum correlation across lags per electrode. Now that we have one correlation per electrode, we plot the results on the brain.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">values</span> <span class="o">=</span> <span class="n">corrs_embedding</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">ch2loc</span> <span class="o">=</span> <span class="p">{</span><span class="n">ch</span><span class="p">[</span><span class="s1">&#39;ch_name&#39;</span><span class="p">]:</span> <span class="n">ch</span><span class="p">[</span><span class="s1">&#39;loc&#39;</span><span class="p">][:</span><span class="mi">3</span><span class="p">]</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;chs&#39;</span><span class="p">]}</span>
+<span class="n">coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">ch2loc</span><span class="p">[</span><span class="n">ch</span><span class="p">]</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;ch_names&#39;</span><span class="p">]])</span>
+<span class="n">coords</span> <span class="o">*=</span> <span class="mi">1000</span>  <span class="c1"># nilearn likes to plot in meters, not mm</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Coordinate matrix shape: &quot;</span><span class="p">,</span> <span class="n">coords</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+<span class="n">order</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">argsort</span><span class="p">()</span>
+<span class="n">plot_markers</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">order</span><span class="p">],</span> <span class="n">coords</span><span class="p">[</span><span class="n">order</span><span class="p">],</span>
+             <span class="n">node_size</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">display_mode</span><span class="o">=</span><span class="s1">&#39;lzr&#39;</span><span class="p">,</span>
+             <span class="n">node_vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">node_cmap</span><span class="o">=</span><span class="s1">&#39;inferno_r&#39;</span><span class="p">,</span> <span class="n">colorbar</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Coordinate matrix shape:  (235, 3)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_04-encoding_40_1.png" src="../_images/notebooks_04-encoding_40_1.png" />
+</div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/logo.png" alt="Logo of ECoG tutorials"/>
+            </a></p>
+<h1 class="logo"><a href="../index.html">ECoG tutorials</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Tutorials:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="00-intro.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="01-qualitychecks.html">ECoG quality checks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="03-features.html">Getting word embeddings</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Training and evaluating encoding models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="05-atlases.html">Atlas-based electrode regions</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="03-features.html" title="previous chapter">Getting word embeddings</a></li>
+      <li>Next: <a href="05-atlases.html" title="next chapter">Atlas-based electrode regions</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;CC BY.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/notebooks/04-encoding.ipynb.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
