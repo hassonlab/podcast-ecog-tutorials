@@ -40,6 +40,16 @@
 <p>This tutorial introduces how to extract features, or word embeddings based on our stimulus transcript. Features are numeric vectors that capture the meaning of the words in our transcript. Here, we will present two types types of features: interpretable syntactic features and high-dimensional word embeddings from a language model.</p>
 <p>Acknowledgments: This tutorial draws heavily on the <a class="reference external" href="https://github.com/snastase/encling-tutorial/blob/main/encling_tutorial.ipynb">encling tutorial</a> by Samuel A. Nastase.</p>
 <p><a class="reference external" href="https://colab.research.google.com/github/hassonlab/podcast-ecog-tutorials/blob/main/notebooks/03-features.ipynb"><img alt="Open in Colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a></p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># only run this cell in colab</span>
+<span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>torch<span class="w"> </span>torchvision<span class="w"> </span>torchaudio<span class="w"> </span>--index-url<span class="w"> </span>https://download.pytorch.org/whl/cu124
+<span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>matplotlib<span class="w"> </span>nilearn<span class="w"> </span>accelerate<span class="w"> </span>transformers<span class="w"> </span>spacy
+</pre></div>
+</div>
+</div>
 <p>First, we’ll import some general-purpose Python packages.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
@@ -63,114 +73,29 @@
 </div>
 </div>
 <p>First we need to load the transcript as a <code class="docutils literal notranslate"><span class="pre">pandas</span></code> dataframe. It contains columns of words and their start and end timestamps.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;../../monkey/stimuli/monkey_transcript.csv&quot;</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bids_root</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>  <span class="c1"># if using a local dataset, set this variable accordingly</span>
+
+<span class="c1"># Download the transcript, if required</span>
+<span class="n">transcript_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bids_root</span><span class="si">}</span><span class="s2">stimuli/podcast_transcript.csv&quot;</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">bids_root</span><span class="p">):</span>
+    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="nv">$transcript_path</span>
+    <span class="n">transcript_path</span> <span class="o">=</span> <span class="s2">&quot;podcast_transcript.csv&quot;</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">transcript_path</span><span class="p">)</span>
 <span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
-</pre></div>
-</div>
-<div class="output_area rendered_html docutils container">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>word</th>
-      <th>start</th>
-      <th>end</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>Act</td>
-      <td>3.710</td>
-      <td>3.790</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>one,</td>
-      <td>3.990</td>
-      <td>4.190</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>monkey</td>
-      <td>4.651</td>
-      <td>4.931</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>in</td>
-      <td>4.951</td>
-      <td>5.011</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>the</td>
-      <td>5.051</td>
-      <td>5.111</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>middle.</td>
-      <td>5.151</td>
-      <td>5.391</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>So</td>
-      <td>6.592</td>
-      <td>6.732</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>there's</td>
-      <td>6.752</td>
-      <td>6.912</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>some</td>
-      <td>6.892</td>
-      <td>7.052</td>
-    </tr>
-    <tr>
-      <th>9</th>
-      <td>places</td>
-      <td>7.072</td>
-      <td>7.342</td>
-    </tr>
-  </tbody>
-</table>
-</div></div>
 </div>
 <p>SpaCy requires us to download and load a model that enables its features. First, we will load the <a class="reference external" href="https://spacy.io/models/en#en_core_web_lg">en-core-web-lg</a> model, a large model trained on English and includes components for part-of-speech tagging and dependency parsing. If you did not download the model as part of the “Getting started” tutorial, uncomment the next cell and run it.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># !python -m spacy download en_core_web_lg</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>python<span class="w"> </span>-m<span class="w"> </span>spacy<span class="w"> </span>download<span class="w"> </span>en_core_web_lg
 </pre></div>
 </div>
 </div>
@@ -561,7 +486,7 @@ tokens. GPT-2 has been (pre)trained on large corpora of text according to a simp
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;../../monkey/stimuli/monkey_transcript.csv&quot;</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">transcript_path</span><span class="p">)</span>
 <span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
 </pre></div>
 </div>
