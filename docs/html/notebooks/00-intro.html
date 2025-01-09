@@ -38,21 +38,21 @@
   <section id="Getting-started">
 <h1>Getting started<a class="headerlink" href="#Getting-started" title="Link to this heading">¶</a></h1>
 <p>This tutorial will guide you through installing the required libraries for the rest of the tutorials, downloading and accessing the dataset, and loading some data to view.</p>
+<p><a class="reference external" href="https://colab.research.google.com/github/hassonlab/podcast-ecog-tutorials/blob/main/notebooks/00-intro.ipynb"><img alt="Open in Colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a></p>
 <section id="Setup-your-environment">
 <h2>Setup your environment<a class="headerlink" href="#Setup-your-environment" title="Link to this heading">¶</a></h2>
+<p>A full list of required packages are defined in a conda <a class="reference external" href="https://openneuro.org/datasets/ds005574">environment.yml</a> file. For the purposes of this tutorial, we will only install the required dependencies. You may skip this step if you’re an existing environment.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>torch<span class="w"> </span>torchvision<span class="w"> </span>torchaudio<span class="w"> </span>--index-url<span class="w"> </span>https://download.pytorch.org/whl/cu124
-<span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>jupyter<span class="w"> </span>plotly<span class="w"> </span>matplotlib<span class="w"> </span>nilearn<span class="w"> </span>statsmodels<span class="w"> </span>himalaya<span class="w"> </span>accelerate<span class="w"> </span>transformers<span class="w"> </span>nltk<span class="w"> </span>sentencepiece<span class="w"> </span>spacy
-<span class="o">!</span>python<span class="w"> </span>-m<span class="w"> </span>spacy<span class="w"> </span>download<span class="w"> </span>en_core_web_lg
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>nilearn<span class="w"> </span>mne<span class="w"> </span>mne_bids
 </pre></div>
 </div>
 </div>
-<p>Now that libraries are installed, we can load them.</p>
+<p>Now that the libraries are installed, we will load them.</p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">mne</span>
@@ -64,31 +64,39 @@
 </section>
 <section id="Download-the-data">
 <h2>Download the data<a class="headerlink" href="#Download-the-data" title="Link to this heading">¶</a></h2>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># TODO - download from OpenNeuro</span>
-</pre></div>
-</div>
-</div>
-</section>
-<section id="Verify-dataset">
-<h2>Verify dataset<a class="headerlink" href="#Verify-dataset" title="Link to this heading">¶</a></h2>
-<p>Now that we have the dependencies installed and the dataset downloaded, let’s make sure we can load the files and work with them. For this, we’ll be working with a library called <a class="reference external" href="https://mne.tools/">MNE</a>. Because the dataset is structured according to <a class="reference external" href="https://bids-specification.readthedocs.io/en/stable/">BIDS</a> conventions, we can use the <code class="docutils literal notranslate"><span class="pre">BIDSPath</span></code> class to help us find specific files.</p>
-<p>For now, we want to work the already preprocessed data that is filtered into the high gamma band. This file exists in <code class="docutils literal notranslate"><span class="pre">derivatives/ecogprep/sub-0*/ieeg/sub-0*_task-monkey_desc-highgamma_ieeg.fif</span></code>. The <code class="docutils literal notranslate"><span class="pre">fif</span></code> extension signifies this is an MNE format that contains the data and metadata in one file. Now, we’ll use <code class="docutils literal notranslate"><span class="pre">BIDSPath</span></code> and its <code class="docutils literal notranslate"><span class="pre">match</span></code> method to find these files.</p>
+<p>For this tutorial, we will download one file from the dataset. To download the entire dataset, see the <a class="reference external" href="https://openneuro.org/datasets/ds005574/download">how to download</a> page.</p>
+<p>Because the dataset is structured according to <a class="reference external" href="https://bids-specification.readthedocs.io/en/stable/">BIDS</a> conventions, we can use the <code class="docutils literal notranslate"><span class="pre">BIDSPath</span></code> class to define the path components and construct a path.</p>
+<p>For now, we want to work the already preprocessed data that is filtered into the high gamma band. This file exists in <code class="docutils literal notranslate"><span class="pre">derivatives/ecogprep/sub-0*/ieeg/sub-0*_task-podcast_desc-highgamma_ieeg.fif</span></code>. The <code class="docutils literal notranslate"><span class="pre">fif</span></code> extension signifies this is an MNE format that contains the data and metadata in one file. Now, we’ll use <code class="docutils literal notranslate"><span class="pre">BIDSPath</span></code> and its <code class="docutils literal notranslate"><span class="pre">match</span></code> method to find these files.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">edf_path</span> <span class="o">=</span> <span class="n">BIDSPath</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="s2">&quot;../../monkey/derivatives/ecogprep&quot;</span><span class="p">,</span>
-                    <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span>
-                    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;highgamma&quot;</span><span class="p">,</span>
-                    <span class="n">extension</span><span class="o">=</span><span class="s2">&quot;.fif&quot;</span><span class="p">)</span>
-<span class="n">edf_paths</span> <span class="o">=</span> <span class="n">edf_path</span><span class="o">.</span><span class="n">match</span><span class="p">()</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">edf_paths</span><span class="p">)</span><span class="si">}</span><span class="s2"> matching paths&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Second path: </span><span class="si">{</span><span class="n">edf_paths</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">file_path</span> <span class="o">=</span> <span class="n">BIDSPath</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="s2">&quot;derivatives/ecogprep&quot;</span><span class="p">,</span>
+                     <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;02&quot;</span><span class="p">,</span>
+                     <span class="n">task</span><span class="o">=</span><span class="s2">&quot;podcast&quot;</span><span class="p">,</span>
+                     <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span>
+                     <span class="n">description</span><span class="o">=</span><span class="s2">&quot;highgamma&quot;</span><span class="p">,</span>
+                     <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span>
+                     <span class="n">extension</span><span class="o">=</span><span class="s2">&quot;fif&quot;</span><span class="p">)</span>
+<span class="nb">str</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&#39;derivatives/ecogprep/sub-02/ieeg/sub-02_task-podcast_desc-highgamma_ieeg.fif&#39;
+</pre></div></div>
+</div>
+<p>Now we can download the file using <code class="docutils literal notranslate"><span class="pre">wget</span></code>:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="si">${</span><span class="nv">file_path</span><span class="si">}</span>
 </pre></div>
 </div>
 </div>
@@ -97,22 +105,26 @@
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-Found 9 matching paths
-Second path: ../../monkey/derivatives/ecogprep/sub-02/ieeg/sub-02_task-monkey_desc-highgamma_ieeg.fif
+File ‘sub-02_task-podcast_desc-highgamma_ieeg.fif’ already there; not retrieving.
+
 </pre></div></div>
 </div>
+</section>
+<section id="Verify-dataset">
+<h2>Verify dataset<a class="headerlink" href="#Verify-dataset" title="Link to this heading">¶</a></h2>
+<p>Now that we have the dependencies installed and the dataset downloaded, let’s make sure we can load the files and work with them. For this, we’ll be working with a library called <a class="reference external" href="https://mne.tools/">MNE</a>.</p>
 <p>Now let’s load one of these files using the <code class="docutils literal notranslate"><span class="pre">read_raw_fif</span></code> file, and then display some of the metadata about the file.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">raw</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_raw_fif</span><span class="p">(</span><span class="n">edf_paths</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">raw</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_raw_fif</span><span class="p">(</span><span class="n">file_path</span><span class="o">.</span><span class="n">basename</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="n">raw</span>
 </pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
 </pre></div>
 </div>
 <div class="output_area rendered_html docutils container">
@@ -273,8 +285,8 @@ span.collapse-uncollapse-caret {
 
 
 
-<tr class="repr-section-header general-0fffc5ec-dcb6-4399-9a56-c836b0c462ef"  title="Hide section"
-    onclick="toggleVisibility('general-0fffc5ec-dcb6-4399-9a56-c836b0c462ef')">
+<tr class="repr-section-header general-54ab5181-5058-4577-b8ab-cf72e28c34e0"  title="Hide section"
+    onclick="toggleVisibility('general-54ab5181-5058-4577-b8ab-cf72e28c34e0')">
     <th class="repr-section-toggle-col">
         <button>
 
@@ -286,30 +298,30 @@ span.collapse-uncollapse-caret {
     </th>
 </tr>
 
-<tr class="repr-element general-0fffc5ec-dcb6-4399-9a56-c836b0c462ef ">
+<tr class="repr-element general-54ab5181-5058-4577-b8ab-cf72e28c34e0 ">
     <td class="repr-section-toggle-col"></td>
     <td>Filename(s)</td>
     <td>
 
-        sub-02_task-monkey_desc-highgamma_ieeg.fif
+        sub-02_task-podcast_desc-highgamma_ieeg.fif
 
 
     </td>
 </tr>
 
-<tr class="repr-element general-0fffc5ec-dcb6-4399-9a56-c836b0c462ef ">
+<tr class="repr-element general-54ab5181-5058-4577-b8ab-cf72e28c34e0 ">
     <td class="repr-section-toggle-col"></td>
     <td>MNE object type</td>
     <td>Raw</td>
 </tr>
-<tr class="repr-element general-0fffc5ec-dcb6-4399-9a56-c836b0c462ef ">
+<tr class="repr-element general-54ab5181-5058-4577-b8ab-cf72e28c34e0 ">
     <td class="repr-section-toggle-col"></td>
     <td>Measurement date</td>
 
     <td>2001-01-01 at 01:01:01 UTC</td>
 
 </tr>
-<tr class="repr-element general-0fffc5ec-dcb6-4399-9a56-c836b0c462ef ">
+<tr class="repr-element general-54ab5181-5058-4577-b8ab-cf72e28c34e0 ">
     <td class="repr-section-toggle-col"></td>
     <td>Participant</td>
 
@@ -318,7 +330,7 @@ span.collapse-uncollapse-caret {
 
 
 </tr>
-<tr class="repr-element general-0fffc5ec-dcb6-4399-9a56-c836b0c462ef ">
+<tr class="repr-element general-54ab5181-5058-4577-b8ab-cf72e28c34e0 ">
     <td class="repr-section-toggle-col"></td>
     <td>Experimenter</td>
 
@@ -333,8 +345,8 @@ span.collapse-uncollapse-caret {
 
 
 
-<tr class="repr-section-header acquisition-3f26166d-e058-4f81-8cb0-c0a8d09a8893"
-    title="Hide section"  onclick="toggleVisibility('acquisition-3f26166d-e058-4f81-8cb0-c0a8d09a8893')">
+<tr class="repr-section-header acquisition-f16228c0-5fd1-464a-8a76-74021d045009"
+    title="Hide section"  onclick="toggleVisibility('acquisition-f16228c0-5fd1-464a-8a76-74021d045009')">
     <th class="repr-section-toggle-col">
         <button>
 
@@ -346,7 +358,7 @@ span.collapse-uncollapse-caret {
     </th>
 </tr>
 
-<tr class="repr-element acquisition-3f26166d-e058-4f81-8cb0-c0a8d09a8893 ">
+<tr class="repr-element acquisition-f16228c0-5fd1-464a-8a76-74021d045009 ">
     <td class="repr-section-toggle-col"></td>
     <td>Duration</td>
     <td>00:29:60 (HH:MM:SS)</td>
@@ -359,14 +371,14 @@ span.collapse-uncollapse-caret {
 
 
 
-<tr class="repr-element acquisition-3f26166d-e058-4f81-8cb0-c0a8d09a8893 ">
+<tr class="repr-element acquisition-f16228c0-5fd1-464a-8a76-74021d045009 ">
     <td class="repr-section-toggle-col"></td>
     <td>Sampling frequency</td>
     <td>512.00 Hz</td>
 </tr>
 
 
-<tr class="repr-element acquisition-3f26166d-e058-4f81-8cb0-c0a8d09a8893 ">
+<tr class="repr-element acquisition-f16228c0-5fd1-464a-8a76-74021d045009 ">
     <td class="repr-section-toggle-col"></td>
     <td>Time points</td>
     <td>921,600</td>
@@ -381,8 +393,8 @@ span.collapse-uncollapse-caret {
 
 
 
-<tr class="repr-section-header channels-5a7206ff-32ee-4bfa-ac30-0e1f526414be"  title="Hide section"
-    onclick="toggleVisibility('channels-5a7206ff-32ee-4bfa-ac30-0e1f526414be')">
+<tr class="repr-section-header channels-5d1f3bc4-58ca-418f-b389-2f023f99454e"  title="Hide section"
+    onclick="toggleVisibility('channels-5d1f3bc4-58ca-418f-b389-2f023f99454e')">
     <th class="repr-section-toggle-col">
         <button>
 
@@ -395,7 +407,7 @@ span.collapse-uncollapse-caret {
 </tr>
 
 
-<tr class="repr-element channels-5a7206ff-32ee-4bfa-ac30-0e1f526414be ">
+<tr class="repr-element channels-5d1f3bc4-58ca-418f-b389-2f023f99454e ">
     <td class="repr-section-toggle-col"></td>
     <td>ECoG</td>
     <td>
@@ -408,7 +420,7 @@ span.collapse-uncollapse-caret {
 </tr>
 
 
-<tr class="repr-element channels-5a7206ff-32ee-4bfa-ac30-0e1f526414be ">
+<tr class="repr-element channels-5d1f3bc4-58ca-418f-b389-2f023f99454e ">
     <td class="repr-section-toggle-col"></td>
     <td>Head & sensor digitization</td>
 
@@ -423,8 +435,8 @@ span.collapse-uncollapse-caret {
 
 
 
-<tr class="repr-section-header filters-9b209f7e-764e-4d6b-8b7d-e0cc9a5f5b84"  title="Hide section"
-    onclick="toggleVisibility('filters-9b209f7e-764e-4d6b-8b7d-e0cc9a5f5b84')">
+<tr class="repr-section-header filters-443966fe-32b3-4a38-91dc-d4bababebc0b"  title="Hide section"
+    onclick="toggleVisibility('filters-443966fe-32b3-4a38-91dc-d4bababebc0b')">
     <th class="repr-section-toggle-col">
         <button>
 
@@ -436,14 +448,14 @@ span.collapse-uncollapse-caret {
     </th>
 </tr>
 
-<tr class="repr-element filters-9b209f7e-764e-4d6b-8b7d-e0cc9a5f5b84 ">
+<tr class="repr-element filters-443966fe-32b3-4a38-91dc-d4bababebc0b ">
     <td class="repr-section-toggle-col"></td>
     <td>Highpass</td>
     <td>70.00 Hz</td>
 </tr>
 
 
-<tr class="repr-element filters-9b209f7e-764e-4d6b-8b7d-e0cc9a5f5b84 ">
+<tr class="repr-element filters-443966fe-32b3-4a38-91dc-d4bababebc0b ">
     <td class="repr-section-toggle-col"></td>
     <td>Lowpass</td>
     <td>200.00 Hz</td>
@@ -455,7 +467,7 @@ span.collapse-uncollapse-caret {
 <p>The output contains several important pieces of information. First, duration of the data is roughly 30 minutes long (corresponding to the length of the podcast). The data is sampled at 512 Hz. There are 90 ECoG channels. And the data has a filtered applied to it ranging from 70 Hz to 200 Hz.</p>
 <p>One of the primary MNE classes is the <a class="reference external" href="https://mne.tools/stable/generated/mne.io.Raw.html">Raw</a>. It has many useful methods and properties if you look at its documentation. The two we will mention now are <code class="docutils literal notranslate"><span class="pre">get_data()</span></code> and the <code class="docutils literal notranslate"><span class="pre">info</span></code> attribute. Sometimes we want to work with the underlying data directly. Here is how:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
@@ -475,7 +487,7 @@ Data is a &lt;class &#39;numpy.ndarray&#39;&gt; object and has a shape of: (90, 
 <p><code class="docutils literal notranslate"><span class="pre">raw.info</span></code> returns an <a class="reference external" href="https://mne.tools/stable/generated/mne.Info.html">Info</a> object. We saw this information earlier as it contains much of the metadata of the file. Particularly useful are the information we can get on those 90 channels. This can be accessed by <code class="docutils literal notranslate"><span class="pre">raw.info.ch_names</span></code> and <code class="docutils literal notranslate"><span class="pre">raw.info.chs</span></code>. The documentation spells out the details very clearly. Below, we’ll use the channel information to get electrode locations and plot them on a brain.</p>
 <p>For example, let’s look at just the first electrode.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;First channel name is:&quot;</span><span class="p">,</span> <span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">ch_names</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
@@ -494,7 +506,7 @@ Metadata associated with the first channel:
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
 </pre></div>
 </div>
 <div class="output_area docutils container">
@@ -520,7 +532,7 @@ Metadata associated with the first channel:
 <h2>Ploting electrodes on the brain<a class="headerlink" href="#Ploting-electrodes-on-the-brain" title="Link to this heading">¶</a></h2>
 <p>Now we’ll use a library called <a class="reference external" href="https://nilearn.github.io/">nilearn</a> to help us plot the electrodes on a glass brain. We’ll be using the function <a class="reference external" href="https://nilearn.github.io/stable/modules/generated/nilearn.plotting.plot_markers.html">plot_markers</a>. Take a quick look at its parameters in the documentation, as they can be very useful.</p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">nilearn.plotting</span> <span class="kn">import</span> <span class="n">plot_markers</span>
@@ -530,7 +542,7 @@ Metadata associated with the first channel:
 <p>At a minimum, this function requires a set of values, and a corresponding set of coordinates. The coordinates tell <code class="docutils literal notranslate"><span class="pre">nilearn</span></code> <em>where</em> to plot the electrode, while the value tells it what color to assign it. For the example below, we just want to plot them all in one color, so values will be all the same number. Importantly, we need to collate the coordinates into a NumPy matrix of shape <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">3)</span></code> where <code class="docutils literal notranslate"><span class="pre">n</span></code> is the number of electrodes and the 3 columns are the coordinates of each electrode.
 First, we’ll assemble this matrix:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ch2loc</span> <span class="o">=</span> <span class="p">{</span><span class="n">ch</span><span class="p">[</span><span class="s1">&#39;ch_name&#39;</span><span class="p">]:</span> <span class="n">ch</span><span class="p">[</span><span class="s1">&#39;loc&#39;</span><span class="p">][:</span><span class="mi">3</span><span class="p">]</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;chs&#39;</span><span class="p">]}</span>
@@ -550,7 +562,7 @@ Coordinate matrix shape:  (90, 3)
 </div>
 <p>And now we plot them on the brain:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">coords</span><span class="p">))</span>
@@ -566,14 +578,14 @@ Coordinate matrix shape:  (90, 3)
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-&lt;nilearn.plotting.displays._projectors.LZRProjector object at 0x15384f2a6480&gt;
+&lt;nilearn.plotting.displays._projectors.LZRProjector object at 0x146ac66510d0&gt;
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/notebooks_00-intro_24_1.png" src="../_images/notebooks_00-intro_24_1.png" />
+<img alt="../_images/notebooks_00-intro_25_1.png" src="../_images/notebooks_00-intro_25_1.png" />
 </div>
 </div>
 </section>
