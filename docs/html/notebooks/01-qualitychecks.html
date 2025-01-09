@@ -63,7 +63,7 @@ onset of a word.</p>
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bids_root</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>  <span class="c1"># if using a local dataset, set this variable accordingly</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bids_root</span> <span class="o">=</span> <span class="s2">&quot;  # if using a local dataset, set this variable accordingly</span>
 
 <span class="n">file_path</span> <span class="o">=</span> <span class="n">BIDSPath</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bids_root</span><span class="si">}</span><span class="s2">/derivatives/ecogprep&quot;</span><span class="p">,</span>
                     <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;03&quot;</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="s2">&quot;podcast&quot;</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;highgamma&quot;</span><span class="p">,</span>
@@ -72,7 +72,7 @@ onset of a word.</p>
 
 <span class="c1"># You only need to run this if using Colab (i.e. if you did not set bids_root to a local directory)</span>
 <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">bids_root</span><span class="p">):</span>
-    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="si">${</span><span class="nv">file_path</span><span class="si">}</span>
+    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="nv">$file_path</span>
     <span class="n">file_path</span> <span class="o">=</span> <span class="n">file_path</span><span class="o">.</span><span class="n">basename</span>
 </pre></div>
 </div>
@@ -463,7 +463,7 @@ ECoG data has a shape of: (235, 921600)
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the audio, if required</span>
 <span class="n">audio_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bids_root</span><span class="si">}</span><span class="s2">/stimuli/podcast.wav&quot;</span>
 <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">bids_root</span><span class="p">):</span>
-    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="si">${</span><span class="nv">audio_path</span><span class="si">}</span>
+    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="nv">$audio_path</span>
     <span class="n">audio_path</span> <span class="o">=</span> <span class="s2">&quot;podcast.wav&quot;</span>
 </pre></div>
 </div>
@@ -636,7 +636,7 @@ average over the words and keeping the time dimension intact. Now we have a 50-d
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the transcript, if required</span>
 <span class="n">transcript_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bids_root</span><span class="si">}</span><span class="s2">/stimuli/podcast_transcript.csv&quot;</span>
 <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">bids_root</span><span class="p">):</span>
-    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="si">${</span><span class="nv">transcript_path</span><span class="si">}</span>
+    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="nv">$transcript_path</span>
     <span class="n">transcript_path</span> <span class="o">=</span> <span class="s2">&quot;podcast_transcript.csv&quot;</span>
 </pre></div>
 </div>
