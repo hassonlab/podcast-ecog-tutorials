@@ -39,6 +39,7 @@
 <h1>ECoG quality checks<a class="headerlink" href="#ECoG-quality-checks" title="Link to this heading">¶</a></h1>
 <p>This tutorial will showcase two ways to quality check the dataset. First, we will correlate the podcast audio with each electrode’s time series. We expect that electrodes that are very close to the <a class="reference external" href="https://en.wikipedia.org/wiki/Auditory_cortex">primary auditory cortex</a> will be correlated to the audio waveform (Honey et al., 2012). Second, we will use an <a class="reference external" href="https://en.wikipedia.org/wiki/Event-related_potential">event-related potential</a> (ERP) analysis to see an electrode’s response to the
 onset of a word.</p>
+<p><a class="reference external" href="https://colab.research.google.com/github/hassonlab/podcast-ecog-tutorials/blob/main/notebooks/00-qualitychecks.ipynb"><img alt="Open in Colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a></p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
@@ -62,17 +63,39 @@ onset of a word.</p>
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">edf_path</span> <span class="o">=</span> <span class="n">BIDSPath</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="s2">&quot;../../monkey/derivatives/ecogprep&quot;</span><span class="p">,</span>
-                    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;03&quot;</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;highgamma&quot;</span><span class="p">,</span> <span class="n">extension</span><span class="o">=</span><span class="s2">&quot;.fif&quot;</span><span class="p">)</span>
-<span class="n">edf_paths</span> <span class="o">=</span> <span class="n">edf_path</span><span class="o">.</span><span class="n">match</span><span class="p">()</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bids_root</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>  <span class="c1"># if using a local dataset, set this variable accordingly</span>
 
-<span class="n">raw</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_raw_fif</span><span class="p">(</span><span class="n">edf_paths</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">file_path</span> <span class="o">=</span> <span class="n">BIDSPath</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bids_root</span><span class="si">}</span><span class="s2">/derivatives/ecogprep&quot;</span><span class="p">,</span>
+                    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;03&quot;</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="s2">&quot;podcast&quot;</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;highgamma&quot;</span><span class="p">,</span>
+                    <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span> <span class="n">extension</span><span class="o">=</span><span class="s2">&quot;.fif&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File path within the dataset: </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># You only need to run this if using Colab (i.e. if you did not set bids_root to a local directory)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">bids_root</span><span class="p">):</span>
+    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="si">${</span><span class="nv">file_path</span><span class="si">}</span>
+    <span class="n">file_path</span> <span class="o">=</span> <span class="n">file_path</span><span class="o">.</span><span class="n">basename</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+File path within the dataset: ../../monkey/derivatives/ecogprep/sub-03/ieeg/sub-03_task-podcast_desc-highgamma_ieeg.fif
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">raw</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_raw_fif</span><span class="p">(</span><span class="n">file_path</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bids_root</span><span class="p">)</span> <span class="k">else</span> <span class="n">file_path</span><span class="o">.</span><span class="n">basename</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="n">raw</span>
 </pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
 <div class="output_area rendered_html docutils container">
@@ -233,8 +256,8 @@ span.collapse-uncollapse-caret {
 
 
 
-<tr class="repr-section-header general-fa98341b-bf25-425a-978b-07aa782dfccf"  title="Hide section"
-    onclick="toggleVisibility('general-fa98341b-bf25-425a-978b-07aa782dfccf')">
+<tr class="repr-section-header general-f5d95269-a40c-48a1-a049-d7029a7e15c8"  title="Hide section"
+    onclick="toggleVisibility('general-f5d95269-a40c-48a1-a049-d7029a7e15c8')">
     <th class="repr-section-toggle-col">
         <button>
 
@@ -246,30 +269,30 @@ span.collapse-uncollapse-caret {
     </th>
 </tr>
 
-<tr class="repr-element general-fa98341b-bf25-425a-978b-07aa782dfccf ">
+<tr class="repr-element general-f5d95269-a40c-48a1-a049-d7029a7e15c8 ">
     <td class="repr-section-toggle-col"></td>
     <td>Filename(s)</td>
     <td>
 
-        sub-03_task-monkey_desc-highgamma_ieeg.fif
+        sub-03_task-podcast_desc-highgamma_ieeg.fif
 
 
     </td>
 </tr>
 
-<tr class="repr-element general-fa98341b-bf25-425a-978b-07aa782dfccf ">
+<tr class="repr-element general-f5d95269-a40c-48a1-a049-d7029a7e15c8 ">
     <td class="repr-section-toggle-col"></td>
     <td>MNE object type</td>
     <td>Raw</td>
 </tr>
-<tr class="repr-element general-fa98341b-bf25-425a-978b-07aa782dfccf ">
+<tr class="repr-element general-f5d95269-a40c-48a1-a049-d7029a7e15c8 ">
     <td class="repr-section-toggle-col"></td>
     <td>Measurement date</td>
 
     <td>2019-03-11 at 10:54:21 UTC</td>
 
 </tr>
-<tr class="repr-element general-fa98341b-bf25-425a-978b-07aa782dfccf ">
+<tr class="repr-element general-f5d95269-a40c-48a1-a049-d7029a7e15c8 ">
     <td class="repr-section-toggle-col"></td>
     <td>Participant</td>
 
@@ -278,7 +301,7 @@ span.collapse-uncollapse-caret {
 
 
 </tr>
-<tr class="repr-element general-fa98341b-bf25-425a-978b-07aa782dfccf ">
+<tr class="repr-element general-f5d95269-a40c-48a1-a049-d7029a7e15c8 ">
     <td class="repr-section-toggle-col"></td>
     <td>Experimenter</td>
 
@@ -293,8 +316,8 @@ span.collapse-uncollapse-caret {
 
 
 
-<tr class="repr-section-header acquisition-62bc7419-a94d-45db-9fbb-be5507455506"
-    title="Hide section"  onclick="toggleVisibility('acquisition-62bc7419-a94d-45db-9fbb-be5507455506')">
+<tr class="repr-section-header acquisition-11796b0c-22b1-4630-a9f4-0707f69a260c"
+    title="Hide section"  onclick="toggleVisibility('acquisition-11796b0c-22b1-4630-a9f4-0707f69a260c')">
     <th class="repr-section-toggle-col">
         <button>
 
@@ -306,7 +329,7 @@ span.collapse-uncollapse-caret {
     </th>
 </tr>
 
-<tr class="repr-element acquisition-62bc7419-a94d-45db-9fbb-be5507455506 ">
+<tr class="repr-element acquisition-11796b0c-22b1-4630-a9f4-0707f69a260c ">
     <td class="repr-section-toggle-col"></td>
     <td>Duration</td>
     <td>00:29:60 (HH:MM:SS)</td>
@@ -319,14 +342,14 @@ span.collapse-uncollapse-caret {
 
 
 
-<tr class="repr-element acquisition-62bc7419-a94d-45db-9fbb-be5507455506 ">
+<tr class="repr-element acquisition-11796b0c-22b1-4630-a9f4-0707f69a260c ">
     <td class="repr-section-toggle-col"></td>
     <td>Sampling frequency</td>
     <td>512.00 Hz</td>
 </tr>
 
 
-<tr class="repr-element acquisition-62bc7419-a94d-45db-9fbb-be5507455506 ">
+<tr class="repr-element acquisition-11796b0c-22b1-4630-a9f4-0707f69a260c ">
     <td class="repr-section-toggle-col"></td>
     <td>Time points</td>
     <td>921,600</td>
@@ -341,8 +364,8 @@ span.collapse-uncollapse-caret {
 
 
 
-<tr class="repr-section-header channels-1ee7bdf9-23cd-46ef-b1e2-a497d36716e3"  title="Hide section"
-    onclick="toggleVisibility('channels-1ee7bdf9-23cd-46ef-b1e2-a497d36716e3')">
+<tr class="repr-section-header channels-39fe507a-3696-45cd-a3ba-a11e64f46aa7"  title="Hide section"
+    onclick="toggleVisibility('channels-39fe507a-3696-45cd-a3ba-a11e64f46aa7')">
     <th class="repr-section-toggle-col">
         <button>
 
@@ -355,7 +378,7 @@ span.collapse-uncollapse-caret {
 </tr>
 
 
-<tr class="repr-element channels-1ee7bdf9-23cd-46ef-b1e2-a497d36716e3 ">
+<tr class="repr-element channels-39fe507a-3696-45cd-a3ba-a11e64f46aa7 ">
     <td class="repr-section-toggle-col"></td>
     <td>ECoG</td>
     <td>
@@ -368,11 +391,11 @@ span.collapse-uncollapse-caret {
 </tr>
 
 
-<tr class="repr-element channels-1ee7bdf9-23cd-46ef-b1e2-a497d36716e3 ">
+<tr class="repr-element channels-39fe507a-3696-45cd-a3ba-a11e64f46aa7 ">
     <td class="repr-section-toggle-col"></td>
     <td>Head & sensor digitization</td>
 
-    <td>253 points</td>
+    <td>238 points</td>
 
 </tr>
 
@@ -383,8 +406,8 @@ span.collapse-uncollapse-caret {
 
 
 
-<tr class="repr-section-header filters-0bb063ea-3e4b-44f2-b871-1a9d2a3fb7df"  title="Hide section"
-    onclick="toggleVisibility('filters-0bb063ea-3e4b-44f2-b871-1a9d2a3fb7df')">
+<tr class="repr-section-header filters-28322673-86d0-4219-bae9-d27d6d8827cf"  title="Hide section"
+    onclick="toggleVisibility('filters-28322673-86d0-4219-bae9-d27d6d8827cf')">
     <th class="repr-section-toggle-col">
         <button>
 
@@ -396,14 +419,14 @@ span.collapse-uncollapse-caret {
     </th>
 </tr>
 
-<tr class="repr-element filters-0bb063ea-3e4b-44f2-b871-1a9d2a3fb7df ">
+<tr class="repr-element filters-28322673-86d0-4219-bae9-d27d6d8827cf ">
     <td class="repr-section-toggle-col"></td>
     <td>Highpass</td>
     <td>70.00 Hz</td>
 </tr>
 
 
-<tr class="repr-element filters-0bb063ea-3e4b-44f2-b871-1a9d2a3fb7df ">
+<tr class="repr-element filters-28322673-86d0-4219-bae9-d27d6d8827cf ">
     <td class="repr-section-toggle-col"></td>
     <td>Lowpass</td>
     <td>200.00 Hz</td>
@@ -414,7 +437,7 @@ span.collapse-uncollapse-caret {
 </div>
 <p>And then, we will extract the underlying data to use directly:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ecog_data</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
@@ -433,12 +456,23 @@ ECoG data has a shape of: (235, 921600)
 <section id="Correlation-between-electrode-activity-and-audio-stimulus">
 <h2>Correlation between electrode activity and audio stimulus<a class="headerlink" href="#Correlation-between-electrode-activity-and-audio-stimulus" title="Link to this heading">¶</a></h2>
 <p>Next, we will load the raw audio waveform of the podcast. Note that the audio has a different sampling rate than the ECoG data, thus has many more time points.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">audio_path</span> <span class="o">=</span> <span class="s2">&quot;../../monkey/stimuli/monkey.wav&quot;</span>
-<span class="n">audio_sf</span><span class="p">,</span> <span class="n">audio_wave</span> <span class="o">=</span> <span class="n">wavfile</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">audio_path</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the audio, if required</span>
+<span class="n">audio_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bids_root</span><span class="si">}</span><span class="s2">/stimuli/podcast.wav&quot;</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">bids_root</span><span class="p">):</span>
+    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="si">${</span><span class="nv">audio_path</span><span class="si">}</span>
+    <span class="n">audio_path</span> <span class="o">=</span> <span class="s2">&quot;podcast.wav&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">audio_sf</span><span class="p">,</span> <span class="n">audio_wave</span> <span class="o">=</span> <span class="n">wavfile</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">audio_path</span><span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Audio waveform is sampled at </span><span class="si">{</span><span class="n">audio_sf</span><span class="si">}</span><span class="s2"> Hz and has a shape of: </span><span class="si">{</span><span class="n">audio_wave</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
@@ -461,13 +495,13 @@ Audio waveform is sampled at 44100 Hz and has a shape of: (79380000, 2)
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-/tmp/ipykernel_3290725/4460996.py:2: WavFileWarning: Chunk (non-data) not understood, skipping it.
+/tmp/ipykernel_3294141/641169259.py:1: WavFileWarning: Chunk (non-data) not understood, skipping it.
   audio_sf, audio_wave = wavfile.read(audio_path)
 </pre></div></div>
 </div>
 <p>You can also listen to the first 30 seconds of the podcast:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">Audio</span>
@@ -476,7 +510,7 @@ Audio waveform is sampled at 44100 Hz and has a shape of: (79380000, 2)
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="output_area rendered_html docutils container">
@@ -487,7 +521,7 @@ Audio waveform is sampled at 44100 Hz and has a shape of: (79380000, 2)
 </div>
 <p>Following the procedure in Honey et al., 2012, we will extract the power modulations from the raw waveform between 200 and 5000 Hz. Then, we downsample this new time-series to the same sampling rate as the ECoG data (512 Hz). The entire process is encapsulated in the following function. It is not critical for you to follow it closely if you are not familiar with digital signal processing.</p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">preprocess_raw_audio</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">fs</span><span class="p">,</span> <span class="n">to_fs</span><span class="p">,</span> <span class="n">lowcut</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">highcut</span><span class="o">=</span><span class="mi">5000</span><span class="p">):</span>
@@ -523,7 +557,7 @@ Audio waveform is sampled at 44100 Hz and has a shape of: (79380000, 2)
 </div>
 <p>Notice that after preprocessing, the audio power has a new sampling rate and the same number of samples as the ECoG data:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ecog_sr</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;sfreq&#39;</span><span class="p">]</span>
@@ -543,7 +577,7 @@ Audio power is sampled at 512.0 Hz and has a shape of: (921600,)
 </div>
 <p>Now we have both time series that we want to correlate. We will loop through each electrode at a time, and correlate its neural activity with the audio power, saving the result in a list.</p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">n_electrodes</span> <span class="o">=</span> <span class="n">ecog_data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
@@ -556,7 +590,7 @@ Audio power is sampled at 512.0 Hz and has a shape of: (921600,)
 </div>
 <p>Great! We computed the correlations, now what? Since we have one correlation per electrode, we can view the results directly on the brain. This way, we verify that electrodes located near the primary auditory cortex do show a higher correlation to the audio stimulus than other electrodes.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ch2loc</span> <span class="o">=</span> <span class="p">{</span><span class="n">ch</span><span class="p">[</span><span class="s1">&#39;ch_name&#39;</span><span class="p">]:</span> <span class="n">ch</span><span class="p">[</span><span class="s1">&#39;loc&#39;</span><span class="p">][:</span><span class="mi">3</span><span class="p">]</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;chs&#39;</span><span class="p">]}</span>
@@ -585,7 +619,7 @@ Coordinate matrix shape:  (235, 3)
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/notebooks_01-qualitychecks_18_1.png" src="../_images/notebooks_01-qualitychecks_18_1.png" />
+<img alt="../_images/notebooks_01-qualitychecks_20_1.png" src="../_images/notebooks_01-qualitychecks_20_1.png" />
 </div>
 </div>
 <p>This example made a strong simplifying assumption: that the audio and electrode activity are synchronized simulatenously. However, this does not need be true for all electrodes. There are some electrodes who will be processing the incoming signal and thus will have some delay. To account for this possiblity, a <a class="reference external" href="https://en.wikipedia.org/wiki/Cross-correlation">cross correlation</a> analysis is particularily usseful.</p>
@@ -595,11 +629,23 @@ Coordinate matrix shape:  (235, 3)
 <p>This quality check tests how electrodes respond to the onset of words. For example, an electrode that is actively processing words may increase its activity whenever a word occurs. A general term for this kind of analysis is called event-related potentials. The idea behind it is straightforward. For each electrode, we will extract a window of its activity whenever a word occurs. So, if there 10 words and the window has 50 samples, we end up with a matrix of (10, 50) for one electrode. Then, we
 average over the words and keeping the time dimension intact. Now we have a 50-dimensional vector that summarizes the electrode’s average response to a word occuring at a particular time point in the window we chose.</p>
 <p>We already loaded the ECoG data, but for this analysis we also need the word-aligned transcript because we need to know the onset of each word. We use <a class="reference external" href="https://pandas.pydata.org">pandas</a> to load this transcript as a DataFrame:</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;../../monkey/stimuli/monkey_transcript.csv&quot;</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the transcript, if required</span>
+<span class="n">transcript_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bids_root</span><span class="si">}</span><span class="s2">/stimuli/podcast_transcript.csv&quot;</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">bids_root</span><span class="p">):</span>
+    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="si">${</span><span class="nv">transcript_path</span><span class="si">}</span>
+    <span class="n">transcript_path</span> <span class="o">=</span> <span class="s2">&quot;podcast_transcript.csv&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">transcript_path</span><span class="p">)</span>
 <span class="n">df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">&quot;start&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
@@ -607,7 +653,7 @@ average over the words and keeping the time dimension intact. Now we have a 50-d
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
 <div class="output_area rendered_html docutils container">
@@ -701,7 +747,7 @@ average over the words and keeping the time dimension intact. Now we have a 50-d
 </div>
 <p>We will take advantage of MNE’s <a class="reference external" href="https://mne.tools/stable/generated/mne.Epochs.html">Epochs</a> class to extract the windows around word onsets (also called an <em>epoch</em>). To create an <code class="docutils literal notranslate"><span class="pre">Epochs</span></code> object, we must supply it with an <code class="docutils literal notranslate"><span class="pre">events</span></code> NumPy array. This array will have a row for each word, and 3 columns. In our case, we only need the fill in the first column, which corresponds to the onset of the word.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">events</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="mi">3</span><span class="p">))</span>
@@ -721,7 +767,7 @@ events array has a shape of: (5136, 3)
 <p>We pass the raw object and events data to Epochs and create the objet. Notice that the underlying data representing this object is a 3D array where the dimensions correspond to (number of words x number of electrodes x number of time points). We also apply a simple preprocessing step before creating the epochs. Because the neural activity of each electrode will have a different range, it simplifies our analysis to put them on the same scale. To do so, we
 <a class="reference external" href="https://en.wikipedia.org/wiki/Standard_score">standarize</a> the data by <code class="docutils literal notranslate"><span class="pre">z-scoring</span></code>. This process will subtract the mean and divide by the standard deviation for each electrode time series (thus the mean of each electrode’s time series will be 0 and its standard deviation will be 1).</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># zscore the electrode time series so they&#39;re all on the same scale</span>
@@ -761,7 +807,7 @@ Epochs object has a shape of: (5131, 235, 1025)
 </div>
 <p>A 3D array is a lot of data to work with. We can reduce the epochs data into an “evoked” response by averaging across the words. With MNE, this is performed by calling the <code class="docutils literal notranslate"><span class="pre">average()</span></code> method of the Epochs class, which will return an <a class="reference external" href="https://mne.tools/stable/generated/mne.Evoked.html">Evoked</a> object. Notice the shape of this object’s data:</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">evoked</span> <span class="o">=</span> <span class="n">epochs</span><span class="o">.</span><span class="n">average</span><span class="p">()</span>
@@ -779,7 +825,7 @@ Evoked object has a shape of: (235, 1025)
 </div>
 <p>MNE also provides the ability to plot the averaged, evoked response of each electrode as seen below. Notice how some electrodes show an increase in activity at time point 0 (the onset of the word). While other electrodes do not.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">evoked</span><span class="o">.</span><span class="n">plot</span><span class="p">();</span>
@@ -790,12 +836,12 @@ Evoked object has a shape of: (235, 1025)
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/notebooks_01-qualitychecks_31_0.png" src="../_images/notebooks_01-qualitychecks_31_0.png" />
+<img alt="../_images/notebooks_01-qualitychecks_34_0.png" src="../_images/notebooks_01-qualitychecks_34_0.png" />
 </div>
 </div>
 <p>We can again plot on the brain this data. Because the evoked object has a shape of (number of electrodes x window time points), we need to reduce the time points dimension and retain one value per electrode. An easy computation to do for this visualization is to take the maximum value across the window.</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">values</span> <span class="o">=</span> <span class="n">evoked</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
@@ -825,7 +871,7 @@ Coordinate matrix shape:  (235, 3)
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/notebooks_01-qualitychecks_33_1.png" src="../_images/notebooks_01-qualitychecks_33_1.png" />
+<img alt="../_images/notebooks_01-qualitychecks_36_1.png" src="../_images/notebooks_01-qualitychecks_36_1.png" />
 </div>
 </div>
 <p>Again, as we expect, the electrodes closest to the primary auditory cortex are the ones that show the greatest increase in activity. However, we also see a few electrodes in the inferior frontal gyrus with higher activity.</p>

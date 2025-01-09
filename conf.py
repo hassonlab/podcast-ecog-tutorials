@@ -28,6 +28,10 @@ html_logo = "_static/logo.png"
 html_theme = "alabaster"
 html_static_path = ["_static"]
 
+# -- Options for alabaster -------------------------------------------------
+# https://alabaster.readthedocs.io/en/latest/customization.html
+html_theme_options = {}
+
 
 # -- Options for nbsphinx -------------------------------------------------
 nbsphinx_execute = "never"
