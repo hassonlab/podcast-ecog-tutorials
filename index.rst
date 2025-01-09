@@ -1,7 +1,12 @@
 ECoG dataset tutorials
 ======================
 
-This is a set of tutorials for working with the "Podcast" ECoG dataset. We recommend going through the tutorials in order as they build on each other.
+A set of tutorials for working with the "Podcast" ECoG dataset.
+
+Here are three ways to use the tutorials:
+1. Carefully Read through each tutorial in order.
+2. Use Google Colab to load a tutorial and run the code yourself to experiment with.
+3. `Download <https://openneuro.org/datasets/ds005574/download>`_ the dataset and tutorials locally or to a compute cluster to use the full dataset or with more compute power.
 
 .. toctree::
    :maxdepth: 1
@@ -12,6 +17,5 @@ This is a set of tutorials for working with the "Podcast" ECoG dataset. We recom
    notebooks/03-features.ipynb
    notebooks/04-encoding.ipynb
    notebooks/05-atlases.ipynb
-
 
 .. image:: _static/fig1.png
