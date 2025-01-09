@@ -42,7 +42,16 @@
 <a class="reference external" href="https://gallantlab.org/himalaya/index.html">Himalaya</a> package (<a class="reference external" href="https://doi.org/10.1016/j.neuroimage.2022.119728">Dupré La Tour et al., 2022</a>) to train encoding models using a ridge L2 penalty (also called ridge regression).</p>
 <p>Acknowledgments: This tutorial draws heavily on the <a class="reference external" href="https://github.com/snastase/encling-tutorial/blob/main/encling_tutorial.ipynb">encling tutorial</a> by Samuel A. Nastase.</p>
 <p><a class="reference external" href="https://colab.research.google.com/github/hassonlab/podcast-ecog-tutorials/blob/main/notebooks/04-encoding.ipynb"><img alt="Open in Colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a></p>
-<p>First, we’ll import the required Python packages.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># only run this cell in colab</span>
+<span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>torch<span class="w"> </span>torchvision<span class="w"> </span>torchaudio<span class="w"> </span>--index-url<span class="w"> </span>https://download.pytorch.org/whl/cu124
+<span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>mne<span class="w"> </span>mne_bids<span class="w"> </span>himalaya<span class="w"> </span>scikit-learn<span class="w"> </span>pandas<span class="w"> </span>matplotlib<span class="w"> </span>nilearn
+</pre></div>
+</div>
+</div>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
@@ -74,6 +83,7 @@
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
     <span class="n">set_backend</span><span class="p">(</span><span class="s2">&quot;torch_cuda&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using cuda!&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -85,10 +95,40 @@ are different for the two features because of different tokenization schemas.</p
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">embedding_path</span> <span class="o">=</span> <span class="s2">&quot;../../monkey/stimuli/</span><span class="si">%s</span><span class="s2">/states.hdf5&quot;</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bids_root</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>  <span class="c1"># if using a local dataset, set this variable accordingly</span>
 
-<span class="n">modelname</span><span class="p">,</span> <span class="n">layer</span> <span class="o">=</span> <span class="s1">&#39;gpt2-xl&#39;</span><span class="p">,</span> <span class="mi">24</span>
-<span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">embedding_path</span> <span class="o">%</span> <span class="n">modelname</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<span class="c1"># Download the transcript, if required</span>
+<span class="n">embedding_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bids_root</span><span class="si">}</span><span class="s2">stimuli/gpt2-xl/features.hdf5&quot;</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">bids_root</span><span class="p">):</span>
+    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="nv">$embedding_path</span>
+    <span class="n">embedding_path</span> <span class="o">=</span> <span class="s2">&quot;features.hdf5&quot;</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using embedding file path: </span><span class="si">{</span><span class="n">embedding_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+--2025-01-09 15:08:13--  https://s3.amazonaws.com/openneuro.org/ds005574/stimuli/gpt2-xl/features.hdf5
+Resolving s3.amazonaws.com (s3.amazonaws.com)... 52.217.123.120, 52.216.43.152, 52.217.199.56, ...
+Connecting to s3.amazonaws.com (s3.amazonaws.com)|52.217.123.120|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 1721998080 (1.6G) [application/x-hdf5]
+Saving to: ‘features.hdf5’
+
+features.hdf5        12%[=&gt;                  ] 197.25M  47.8MB/s    eta 42s    ^C
+Using embedding file path: features.hdf5
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">modelname</span><span class="p">,</span> <span class="n">layer</span> <span class="o">=</span> <span class="s1">&#39;gpt2-xl&#39;</span><span class="p">,</span> <span class="mi">24</span>
+<span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">embedding_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
     <span class="n">contextual_embeddings</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;layer-</span><span class="si">{</span><span class="n">layer</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">][</span><span class="o">...</span><span class="p">]</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;LLM embedding matrix has shape: </span><span class="si">{</span><span class="n">contextual_embeddings</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
@@ -105,13 +145,18 @@ LLM embedding matrix has shape: (5491, 1600)
 <p>We will also load the stimuli transcripts associated with these features. Both transcripts should contain information about the word, token, start (onset), and end (offset). The contextual word embedding transcript should also include other prediction information extracted from GPT-2, like rank, probability, and entropy. For instance, we can calculate how accurate the model is in predicting the next token in the transcript based on the <code class="docutils literal notranslate"><span class="pre">rank</span></code> column, which are integers that represents the rank
 of the actual token in all the possible tokens of GPT-2.</p>
 <p>Note: Check that the transcript contains the same number of tokens as the features we loaded before.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">transcript_path</span> <span class="o">=</span> <span class="s2">&quot;../../monkey/stimuli/</span><span class="si">%s</span><span class="s2">/transcript.tsv&quot;</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the transcript, if required</span>
+<span class="n">transcript_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bids_root</span><span class="si">}</span><span class="s2">stimuli/gpt2-xl/transcript.tsv&quot;</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">bids_root</span><span class="p">):</span>
+    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="nv">$transcript_path</span>
+    <span class="n">transcript_path</span> <span class="o">=</span> <span class="s2">&quot;transcript.tsv&quot;</span>
 
-<span class="n">df_contextual</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">transcript_path</span> <span class="o">%</span> <span class="n">modelname</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="c1"># Load transcript</span>
+<span class="n">df_contextual</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">transcript_path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 <span class="k">if</span> <span class="s2">&quot;rank&quot;</span> <span class="ow">in</span> <span class="n">df_contextual</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
     <span class="n">model_acc</span> <span class="o">=</span> <span class="p">(</span><span class="n">df_contextual</span><span class="p">[</span><span class="s2">&quot;rank&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model accuracy: </span><span class="si">{</span><span class="n">model_acc</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
@@ -119,119 +164,6 @@ of the actual token in all the possible tokens of GPT-2.</p>
 <span class="n">df_contextual</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
 </pre></div>
 </div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-Model accuracy: 30.942%
-</pre></div></div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
-</pre></div>
-</div>
-<div class="output_area rendered_html docutils container">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>word_idx</th>
-      <th>word</th>
-      <th>start</th>
-      <th>end</th>
-      <th>hftoken</th>
-      <th>token_id</th>
-      <th>rank</th>
-      <th>true_prob</th>
-      <th>top_pred</th>
-      <th>entropy</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>0</td>
-      <td>Act</td>
-      <td>3.710</td>
-      <td>3.790</td>
-      <td>ĠAct</td>
-      <td>2191</td>
-      <td>1644</td>
-      <td>0.000012</td>
-      <td>0</td>
-      <td>2.402717</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>1</td>
-      <td>one,</td>
-      <td>3.990</td>
-      <td>4.190</td>
-      <td>Ġone</td>
-      <td>530</td>
-      <td>92</td>
-      <td>0.000342</td>
-      <td>352</td>
-      <td>3.732053</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>1</td>
-      <td>one,</td>
-      <td>3.990</td>
-      <td>4.190</td>
-      <td>,</td>
-      <td>11</td>
-      <td>3</td>
-      <td>0.059520</td>
-      <td>25</td>
-      <td>4.259335</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>2</td>
-      <td>monkey</td>
-      <td>4.651</td>
-      <td>4.931</td>
-      <td>Ġmonkey</td>
-      <td>21657</td>
-      <td>4022</td>
-      <td>0.000018</td>
-      <td>3715</td>
-      <td>6.621269</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>3</td>
-      <td>in</td>
-      <td>4.951</td>
-      <td>5.011</td>
-      <td>Ġin</td>
-      <td>287</td>
-      <td>15</td>
-      <td>0.004237</td>
-      <td>0</td>
-      <td>4.444838</td>
-    </tr>
-  </tbody>
-</table>
-</div></div>
 </div>
 <p>When we extracted features, some words are split into separate tokens. Since we only have information of start and end for words, we will align the features from tokens to words for encoding models. Here, we simply average the token features across the same word. Now the features should be a numpy array with a shape of (number of words * feature dimensions).</p>
 <div class="nbinput docutils container">
@@ -343,16 +275,19 @@ LLM embeddings matrix has shape: (5136, 1600)
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">edf_path</span> <span class="o">=</span> <span class="n">BIDSPath</span><span class="p">(</span>
-    <span class="n">root</span><span class="o">=</span><span class="s2">&quot;../../monkey/derivatives/ecogprep&quot;</span><span class="p">,</span>
-    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;03&quot;</span><span class="p">,</span>
-    <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span>
-    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;highgamma&quot;</span><span class="p">,</span>
-    <span class="n">extension</span><span class="o">=</span><span class="s2">&quot;.fif&quot;</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="n">edf_path</span> <span class="o">=</span> <span class="n">edf_path</span><span class="o">.</span><span class="n">match</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">file_path</span> <span class="o">=</span> <span class="n">BIDSPath</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bids_root</span><span class="si">}</span><span class="s2">derivatives/ecogprep&quot;</span><span class="p">,</span>
+                    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;03&quot;</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="s2">&quot;podcast&quot;</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;highgamma&quot;</span><span class="p">,</span>
+                    <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span> <span class="n">extension</span><span class="o">=</span><span class="s2">&quot;.fif&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File path within the dataset: </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-<span class="n">raw</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_raw_fif</span><span class="p">(</span><span class="n">edf_path</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="c1"># You only need to run this if using Colab (i.e. if you did not set bids_root to a local directory)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">bids_root</span><span class="p">):</span>
+    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="nv">$file_path</span>
+    <span class="n">file_path</span> <span class="o">=</span> <span class="n">file_path</span><span class="o">.</span><span class="n">basename</span>
+
+<span class="n">raw</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_raw_fif</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">picks</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">pick_channels_regexp</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">ch_names</span><span class="p">,</span> <span class="s2">&quot;LG[AB]*&quot;</span><span class="p">)</span>
+<span class="n">raw</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">pick</span><span class="p">(</span><span class="n">picks</span><span class="p">)</span>
 <span class="n">raw</span>
 </pre></div>
 </div>
@@ -769,6 +704,7 @@ Epochs object has a shape of: (5130, 235, 2049)
 </div>
 <p>Next, we’ll downsample the temporal resolution to 32 Hz, which reduces the number of lags to 32 * 4 = 128.</p>
 <div class="admonition note">
+<p class="admonition-title"><strong>Note</strong></p>
 <p>This code block may take ~3 minutes to run.</p>
 </div>
 <div class="nbinput docutils container">
@@ -1376,7 +1312,7 @@ Encoding performance correlating matrix shape: (2, 235, 128)
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/notebooks_04-encoding_38_0.png" src="../_images/notebooks_04-encoding_38_0.png" />
+<img alt="../_images/notebooks_04-encoding_39_0.png" src="../_images/notebooks_04-encoding_39_0.png" />
 </div>
 </div>
 <p>Next we summarize temporally by selecting the maximum correlation across lags per electrode. Now that we have one correlation per electrode, we plot the results on the brain.</p>
@@ -1411,7 +1347,7 @@ Coordinate matrix shape:  (235, 3)
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/notebooks_04-encoding_40_1.png" src="../_images/notebooks_04-encoding_40_1.png" />
+<img alt="../_images/notebooks_04-encoding_41_1.png" src="../_images/notebooks_04-encoding_41_1.png" />
 </div>
 </div>
 </section>

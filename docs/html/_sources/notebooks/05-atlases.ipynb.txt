@@ -18,7 +18,17 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 33,
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# only run this cell in colab\n",
+    "!pip install mne mne_bids scipy matplotlib nilearn"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
    "metadata": {},
    "outputs": [],
    "source": [
@@ -49,7 +59,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 12,
+   "execution_count": 3,
    "metadata": {},
    "outputs": [
     {
@@ -94,23 +104,43 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 16,
+   "execution_count": 4,
    "metadata": {},
    "outputs": [
     {
      "name": "stdout",
      "output_type": "stream",
      "text": [
+      "File path within the dataset: derivatives/ecogprep/sub-03/ieeg/sub-03_task-podcast_desc-highgamma_ieeg.fif\n",
+      "--2025-01-09 15:15:55--  https://s3.amazonaws.com/openneuro.org/ds005574/derivatives/ecogprep/sub-03/ieeg/sub-03_task-podcast_desc-highgamma_ieeg.fif\n",
+      "Resolving s3.amazonaws.com (s3.amazonaws.com)... 54.231.133.240, 52.217.128.40, 16.182.99.80, ...\n",
+      "Connecting to s3.amazonaws.com (s3.amazonaws.com)|54.231.133.240|:443... connected.\n",
+      "HTTP request sent, awaiting response... 200 OK\n",
+      "Length: 866371015 (826M) [biosig/fiff]\n",
+      "Saving to: ‘sub-03_task-podcast_desc-highgamma_ieeg.fif’\n",
+      "\n",
+      "sub-03_task-podcast 100%[===================>] 826.24M  45.6MB/s    in 17s     \n",
+      "\n",
+      "2025-01-09 15:16:12 (49.0 MB/s) - ‘sub-03_task-podcast_desc-highgamma_ieeg.fif’ saved [866371015/866371015]\n",
+      "\n",
       "Coordinate matrix shape:  (235, 3)\n"
      ]
     }
    ],
    "source": [
-    "edf_path = BIDSPath(root=\"../../monkey/derivatives/ecogprep\",\n",
-    "                    subject=\"03\", datatype=\"ieeg\", description=\"highgamma\", extension=\".fif\")\n",
-    "edf_paths = edf_path.match()\n",
+    "bids_root = \"\"  # if using a local dataset, set this variable accordingly\n",
     "\n",
-    "raw = mne.io.read_raw_fif(edf_paths[0], verbose=False)\n",
+    "file_path = BIDSPath(root=f\"{bids_root}derivatives/ecogprep\",\n",
+    "                    subject=\"03\", task=\"podcast\", datatype=\"ieeg\", description=\"highgamma\",\n",
+    "                    suffix=\"ieeg\", extension=\".fif\")\n",
+    "print(f\"File path within the dataset: {file_path}\")\n",
+    "\n",
+    "# You only need to run this if using Colab (i.e. if you did not set bids_root to a local directory)\n",
+    "if not len(bids_root):\n",
+    "    !wget -nc https://s3.amazonaws.com/openneuro.org/ds005574/$file_path\n",
+    "    file_path = file_path.basename\n",
+    "\n",
+    "raw = mne.io.read_raw_fif(file_path, verbose=False)\n",
     "\n",
     "ch2loc = {ch['ch_name']: ch['loc'][:3] for ch in raw.info['chs']}\n",
     "coords = np.vstack([ch2loc[ch] for ch in raw.info['ch_names']])\n",
@@ -127,7 +157,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 24,
+   "execution_count": 5,
    "metadata": {},
    "outputs": [
     {
@@ -160,7 +190,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 26,
+   "execution_count": 6,
    "metadata": {},
    "outputs": [],
    "source": [
@@ -202,7 +232,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 31,
+   "execution_count": 7,
    "metadata": {},
    "outputs": [
     {
@@ -239,7 +269,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 32,
+   "execution_count": 8,
    "metadata": {},
    "outputs": [
     {
@@ -253,7 +283,7 @@
        " ('G_front_inf-Opercular', 13)]"
       ]
      },
-     "execution_count": 32,
+     "execution_count": 8,
      "metadata": {},
      "output_type": "execute_result"
     }
@@ -273,7 +303,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": 39,
+   "execution_count": 9,
    "metadata": {},
    "outputs": [
     {

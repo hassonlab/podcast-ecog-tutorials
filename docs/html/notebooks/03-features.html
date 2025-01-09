@@ -46,7 +46,7 @@
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># only run this cell in colab</span>
 <span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>torch<span class="w"> </span>torchvision<span class="w"> </span>torchaudio<span class="w"> </span>--index-url<span class="w"> </span>https://download.pytorch.org/whl/cu124
-<span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>matplotlib<span class="w"> </span>nilearn<span class="w"> </span>accelerate<span class="w"> </span>transformers<span class="w"> </span>spacy
+<span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>accelerate<span class="w"> </span>transformers<span class="w"> </span>spacy<span class="w"> </span>scikit-learn
 </pre></div>
 </div>
 </div>
@@ -90,12 +90,12 @@
 </pre></div>
 </div>
 </div>
-<p>SpaCy requires us to download and load a model that enables its features. First, we will load the <a class="reference external" href="https://spacy.io/models/en#en_core_web_lg">en-core-web-lg</a> model, a large model trained on English and includes components for part-of-speech tagging and dependency parsing. If you did not download the model as part of the “Getting started” tutorial, uncomment the next cell and run it.</p>
+<p>SpaCy requires us to download and load a model that enables its features. First, we will download the <a class="reference external" href="https://spacy.io/models/en#en_core_web_sm">en-core-web-sm</a> model trained on English and includes components for part-of-speech tagging and dependency parsing.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>python<span class="w"> </span>-m<span class="w"> </span>spacy<span class="w"> </span>download<span class="w"> </span>en_core_web_lg
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>python<span class="w"> </span>-m<span class="w"> </span>spacy<span class="w"> </span>download<span class="w"> </span>en_core_web_sm
 </pre></div>
 </div>
 </div>
@@ -103,7 +103,7 @@
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">modelname</span> <span class="o">=</span> <span class="s2">&quot;en_core_web_lg&quot;</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">modelname</span> <span class="o">=</span> <span class="s2">&quot;en_core_web_sm&quot;</span>
 <span class="n">nlp</span> <span class="o">=</span> <span class="n">spacy</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">modelname</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -471,6 +471,10 @@ Embeddings have a shape of: (5305, 96)
 in the context window when determining the meaning of the current word. This GPT-2 implementation is composed of 12 layers, each of which contains 12 attention heads that influence the embedding as it proceeds to the subsequent layer. The embeddings at each layer of the model comprise 768 features and the context window includes the preceding 1024 tokens. Note that certain words will be broken up into multiple tokens; we’ll need to use GPT-2’s “tokenizer” to convert words into the appropriate
 tokens. GPT-2 has been (pre)trained on large corpora of text according to a simple self-supervised objective function: predict the next word based on the prior context.</p>
 <p>We will be using the <a class="reference external" href="https://huggingface.co">HuggingFace</a> <a class="reference external" href="https://huggingface.co/docs/transformers/index">transformers</a> library for working with these models. If you want to learn more about LLMs and GPT-2, here are some great blogs explaining <a class="reference external" href="https://jalammar.github.io/illustrated-transformer/">transformers</a> and <a class="reference external" href="https://jalammar.github.io/illustrated-gpt2/">GPT-2</a> architecture. The HuggingFace website also has many useful resources.</p>
+<div class="admonition note">
+<p class="admonition-title"><strong>Note</strong></p>
+<p>Using large language models, even small ones, requires a lot of compute resources. If you’re use Colab, go to <code class="docutils literal notranslate"><span class="pre">Edit</span></code> → <code class="docutils literal notranslate"><span class="pre">Notebook</span> <span class="pre">Settings</span></code> and select a GPU. Restart the runtime and try running again. Aftewards, you can run <code class="docutils literal notranslate"><span class="pre">!nvidia-smi</span></code> in a new cell to verify you have GPU available.</p>
+</div>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
@@ -594,6 +598,7 @@ tokens. GPT-2 has been (pre)trained on large corpora of text according to a simp
 <span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
     <span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using cuda!&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
