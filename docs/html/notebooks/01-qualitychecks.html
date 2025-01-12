@@ -475,7 +475,7 @@ ECoG data has a shape of: (235, 921600)
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Download the audio, if required</span>
 <span class="n">audio_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bids_root</span><span class="si">}</span><span class="s2">stimuli/podcast.wav&quot;</span>
 <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">bids_root</span><span class="p">):</span>
-    <span class="o">!</span><span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="nv">$audio_path</span>
+    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="nv">$audio_path</span>
     <span class="n">audio_path</span> <span class="o">=</span> <span class="s2">&quot;podcast.wav&quot;</span>
 </pre></div>
 </div>
