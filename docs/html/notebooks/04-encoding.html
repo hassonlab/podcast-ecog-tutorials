@@ -16,7 +16,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Atlas-based electrode regions" href="05-atlases.html" />
+    <link rel="next" title="Banded ridge regression" href="06-banded-ridge.html" />
     <link rel="prev" title="Getting word embeddings" href="03-features.html" />
    
   <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
@@ -89,8 +89,7 @@
 </div>
 <section id="Loading-features">
 <h2>Loading features<a class="headerlink" href="#Loading-features" title="Link to this heading">¶</a></h2>
-<p>We will now load two different features. The first is syntactic features constructed using spacy.io (<a class="reference external" href="https://github.com/explosion/spaCy">Honnibal et al., 2020</a>). The second contains contextual word embeddings generated from GPT-2 (<a class="reference external" href="https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf">Radford et al., 2019</a>). The loaded features should be a numpy array with a shape of (number of tokens * feature dimensions). Note that the numbers of tokens
-are different for the two features because of different tokenization schemas.</p>
+<p>We will now load two contextual word embeddings from GPT-2 (<a class="reference external" href="https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf">Radford et al., 2019</a>). The loaded features should be a numpy array with a shape of (number of tokens * feature dimensions). Note that the numbers of tokens are different for the two features because of different tokenization schemas.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
@@ -1360,13 +1359,22 @@ Coordinate matrix shape:  (235, 3)
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper">
-            <p class="logo"><a href="../index.html">
-              <img class="logo" src="../_static/logo.png" alt="Logo of ECoG tutorials"/>
-            </a></p>
-<h1 class="logo"><a href="../index.html">ECoG tutorials</a></h1>
+<p class="logo">
+  <a href="../index.html">
+    <img class="logo" src="../_static/logo.png" alt="Logo" />
+    
+  </a>
+</p>
 
 
 
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=hassonlab&repo=podcast-ecog-tutorials&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
 
 
 
@@ -1388,7 +1396,9 @@ Coordinate matrix shape:  (235, 3)
 <li class="toctree-l1"><a class="reference internal" href="01-qualitychecks.html">ECoG quality checks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="03-features.html">Getting word embeddings</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Training and evaluating encoding models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="06-banded-ridge.html">Banded ridge regression</a></li>
 <li class="toctree-l1"><a class="reference internal" href="05-atlases.html">Atlas-based electrode regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="02-preprocessing.html">ECoG preprocessing</a></li>
 </ul>
 
 <div class="relations">
@@ -1396,7 +1406,7 @@ Coordinate matrix shape:  (235, 3)
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
       <li>Previous: <a href="03-features.html" title="previous chapter">Getting word embeddings</a></li>
-      <li>Next: <a href="05-atlases.html" title="next chapter">Atlas-based electrode regions</a></li>
+      <li>Next: <a href="06-banded-ridge.html" title="next chapter">Banded ridge regression</a></li>
   </ul></li>
 </ul>
 </div>

@@ -19,7 +19,7 @@ extensions = [
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
-html_logo = "_static/logo.png"
+# html_logo = "_static/logo.png"
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -30,7 +30,11 @@ html_static_path = ["_static"]
 
 # -- Options for alabaster -------------------------------------------------
 # https://alabaster.readthedocs.io/en/latest/customization.html
-html_theme_options = {}
+html_theme_options = {
+    "logo": "logo.png",
+    "github_user": "hassonlab",
+    "github_repo": "podcast-ecog-tutorials",
+}
 
 
 # -- Options for nbsphinx -------------------------------------------------

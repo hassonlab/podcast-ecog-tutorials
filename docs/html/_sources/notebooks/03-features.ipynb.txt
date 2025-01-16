@@ -1299,7 +1299,7 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "And confirm the size and number of embeddings we got. Note that there are 13 layers (instead of the expected 12) because also included are the initial embeddings before the first layer of the network."
+    "And confirm the size and number of embeddings we got. Note that there are 13 layers (instead of the expected 12) because also included are the initial embeddings before the first layer of the network. Note that list of embeddings will be in batches, which will require flatenning to match the number of tokens."
    ]
   },
   {

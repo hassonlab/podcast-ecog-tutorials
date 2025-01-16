@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>ECoG preprocessing &#8212; ECoG tutorials  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Atlas-based electrode regions" href="05-atlases.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="ECoG-preprocessing">
+<h1>ECoG preprocessing<a class="headerlink" href="#ECoG-preprocessing" title="Link to this heading">¶</a></h1>
+<p>This tutorial introduces a simple preprocessing pipeline to ready raw ECoG signal from an EDF for further analyses.</p>
+<p><a class="reference external" href="https://colab.research.google.com/github/hassonlab/podcast-ecog-tutorials/blob/main/notebooks/02-preprocessing.ipynb"><img alt="Open in Colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a></p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">!</span>pip<span class="w"> </span>install<span class="w"> </span>mne<span class="w"> </span>mne_bids
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">mne</span>
+<span class="kn">from</span> <span class="nn">mne_bids</span> <span class="kn">import</span> <span class="n">BIDSPath</span>
+</pre></div>
+</div>
+</div>
+<section id="Download-the-data">
+<h2>Download the data<a class="headerlink" href="#Download-the-data" title="Link to this heading">¶</a></h2>
+<p>We will demonstrate preprocessing for one subject’s raw ECoG data. The data is stored in a common <a class="reference external" href="https://www.edfplus.info">EDF</a> format which we’ll load and process with MNE. The raw data is stored in the dataset’s top directory, inside the <code class="docutils literal notranslate"><span class="pre">ieeg</span></code> data type. First, we’ll build the appropriate <code class="docutils literal notranslate"><span class="pre">BIDSPath</span></code>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bids_root</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>  <span class="c1"># if using a local dataset, set this variable accordingly</span>
+
+<span class="n">file_path</span> <span class="o">=</span> <span class="n">BIDSPath</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">bids_root</span><span class="p">,</span>
+                    <span class="n">subject</span><span class="o">=</span><span class="s2">&quot;01&quot;</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="s2">&quot;podcast&quot;</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span>
+                    <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;ieeg&quot;</span><span class="p">,</span> <span class="n">extension</span><span class="o">=</span><span class="s2">&quot;.edf&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File path within the dataset: </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># You only need to run this if using Colab (i.e. if you did not set bids_root to a local directory)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">bids_root</span><span class="p">):</span>
+    <span class="o">!</span>wget<span class="w"> </span>-nc<span class="w"> </span>https://s3.amazonaws.com/openneuro.org/ds005574/<span class="nv">$file_path</span>
+    <span class="n">file_path</span> <span class="o">=</span> <span class="n">file_path</span><span class="o">.</span><span class="n">basename</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+File path within the dataset: ../../monkey/sub-01/ieeg/sub-01_task-podcast_ieeg.edf
+</pre></div></div>
+</div>
+<p>Next, we’ll load the data with MNE <code class="docutils literal notranslate"><span class="pre">read_raw_edf</span></code> function:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">raw</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_raw_edf</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">raw</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<script type="text/javascript">
+    const toggleVisibility = (className) => {
+
+  const elements = document.querySelectorAll(`.${className}`)
+
+  elements.forEach(element => {
+    if (element.classList.contains('repr-section-header')) {
+      // Don't collapse the section header row.
+       return
+    }
+    if (element.classList.contains('repr-element-collapsed')) {
+      // Force a reflow to ensure the display change takes effect before removing the class
+      element.classList.remove('repr-element-collapsed')
+      element.offsetHeight // This forces the browser to recalculate layout
+      element.classList.remove('repr-element-faded')
+    } else {
+      // Start transition to hide the element
+      element.classList.add('repr-element-faded')
+      element.addEventListener('transitionend', handler = (e) => {
+        if (e.propertyName === 'opacity' && getComputedStyle(element).opacity === '0.2') {
+          element.classList.add('repr-element-collapsed')
+          element.removeEventListener('transitionend', handler)
+        }
+      });
+    }
+  });
+
+  // Take care of button (adjust caret)
+  const button = document.querySelectorAll(`.repr-section-header.${className} > th.repr-section-toggle-col > button`)[0]
+  button.classList.toggle('collapsed')
+
+  // Take care of the tooltip of the section header row
+  const sectionHeaderRow = document.querySelectorAll(`tr.repr-section-header.${className}`)[0]
+  sectionHeaderRow.classList.toggle('collapsed')
+  sectionHeaderRow.title = sectionHeaderRow.title === 'Hide section' ? 'Show section' : 'Hide section'
+}
+</script>
+
+<style type="text/css">
+    table.repr.table.table-hover.table-striped.table-sm.table-responsive.small {
+  /* Don't make rows wider than they need to be. */
+  display: inline;
+}
+
+table > tbody > tr.repr-element > td {
+  /* Apply a tighter layout to the table cells. */
+  padding-top: 0.1rem;
+  padding-bottom: 0.1rem;
+  padding-right: 1rem;
+}
+
+table > tbody > tr > td.repr-section-toggle-col {
+  /* Remove background and border of the first cell in every row
+     (this row is only used for the collapse / uncollapse caret)
+
+     TODO: Need to find a good solution for VS Code that works in both
+           light and dark mode. */
+  border-color: transparent;
+  --bs-table-accent-bg: transparent;
+}
+
+tr.repr-section-header {
+  /* Remove stripes from section header rows */
+  background-color: transparent;
+  border-color: transparent;
+  --bs-table-striped-bg: transparent;
+  cursor: pointer;
+}
+
+tr.repr-section-header > th {
+  text-align: left !important;
+  vertical-align: middle;
+}
+
+.repr-element, tr.repr-element > td {
+  opacity: 1;
+  text-align: left !important;
+}
+
+.repr-element-faded {
+  transition: 0.3s ease;
+  opacity: 0.2;
+}
+
+.repr-element-collapsed {
+  display: none;
+}
+
+/* Collapse / uncollapse button and the caret it contains. */
+.repr-section-toggle-col button {
+  cursor: pointer;
+  width: 1rem;
+  background-color: transparent;
+  border-color: transparent;
+}
+
+span.collapse-uncollapse-caret {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+  background-repeat: no-repeat;
+  background-position: left;
+  background-size: contain;
+}
+
+/* The collapse / uncollapse carets were copied from the free Font Awesome collection and adjusted. */
+
+/* Default to black carets for light mode */
+.repr-section-toggle-col > button.collapsed > span.collapse-uncollapse-caret {
+  background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="black" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>');
+}
+
+.repr-section-toggle-col
+  > button:not(.collapsed)
+  > span.collapse-uncollapse-caret {
+  background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="black" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>');
+}
+
+/* Use white carets for dark mode */
+@media (prefers-color-scheme: dark) {
+  .repr-section-toggle-col > button.collapsed > span.collapse-uncollapse-caret {
+    background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="white" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>');
+  }
+
+  .repr-section-toggle-col
+    > button:not(.collapsed)
+    > span.collapse-uncollapse-caret {
+    background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="white" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>');
+  }
+}
+
+.channel-names-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  cursor: pointer;
+  color: #0d6efd;
+}
+
+.channel-names-btn:hover {
+  color: #0a58ca;
+}
+</style>
+
+
+
+<table class="repr table table-hover table-striped table-sm table-responsive small">
+
+
+
+
+
+
+
+
+<tr class="repr-section-header general-3efd4ffc-5703-4774-aa51-797abf38caa0"  title="Hide section"
+    onclick="toggleVisibility('general-3efd4ffc-5703-4774-aa51-797abf38caa0')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>General</strong>
+    </th>
+</tr>
+
+<tr class="repr-element general-3efd4ffc-5703-4774-aa51-797abf38caa0 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Filename(s)</td>
+    <td>
+
+        sub-01_task-podcast_ieeg.edf
+
+
+    </td>
+</tr>
+
+<tr class="repr-element general-3efd4ffc-5703-4774-aa51-797abf38caa0 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>MNE object type</td>
+    <td>RawEDF</td>
+</tr>
+<tr class="repr-element general-3efd4ffc-5703-4774-aa51-797abf38caa0 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Measurement date</td>
+
+    <td>2024-09-17 at 12:02:32 UTC</td>
+
+</tr>
+<tr class="repr-element general-3efd4ffc-5703-4774-aa51-797abf38caa0 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Participant</td>
+
+
+    <td>&lt;no</td>
+
+
+</tr>
+<tr class="repr-element general-3efd4ffc-5703-4774-aa51-797abf38caa0 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Experimenter</td>
+
+    <td>Unknown</td>
+
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-section-header acquisition-8c20bdf3-04da-40e5-83d1-53d861e8a52f"
+    title="Hide section"  onclick="toggleVisibility('acquisition-8c20bdf3-04da-40e5-83d1-53d861e8a52f')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Acquisition</strong>
+    </th>
+</tr>
+
+<tr class="repr-element acquisition-8c20bdf3-04da-40e5-83d1-53d861e8a52f ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Duration</td>
+    <td>00:29:60 (HH:MM:SS)</td>
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-element acquisition-8c20bdf3-04da-40e5-83d1-53d861e8a52f ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Sampling frequency</td>
+    <td>512.00 Hz</td>
+</tr>
+
+
+<tr class="repr-element acquisition-8c20bdf3-04da-40e5-83d1-53d861e8a52f ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Time points</td>
+    <td>921,600</td>
+</tr>
+
+
+
+
+
+
+
+
+
+
+<tr class="repr-section-header channels-a1a2a278-a156-4df9-b136-8f1d9b81899b"  title="Hide section"
+    onclick="toggleVisibility('channels-a1a2a278-a156-4df9-b136-8f1d9b81899b')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Channels</strong>
+    </th>
+</tr>
+
+
+<tr class="repr-element channels-a1a2a278-a156-4df9-b136-8f1d9b81899b ">
+    <td class="repr-section-toggle-col"></td>
+    <td>EEG</td>
+    <td>
+        <button class="channel-names-btn" onclick="alert('Good EEG:\n\nG1, G2, G3, G4, G5, G6, G7, G8, G9, G10, G11, G12, G13, G14, G15, G16, G17, G18, G19, G20, G21, G22, G23, G24, G25, G26, G27, G28, G29, G30, G31, G32, G33, G34, G35, G36, G37, G38, G39, G40, G41, G42, G43, G44, G45, G46, G47, G48, G49, G50, G51, G52, G53, G54, G55, G56, G57, G58, G59, G60, G61, G62, G63, G64, AT1, AT2, AT3, AT4, MT1, MT2, MT3, MT4, PT1, PT2, PT3, PT4, OC1, OC2, OC3, OC4, OC5, OC6, OC7, OC8, FR1, FR2, FR3, FR4, DAMT1, DAMT2, DAMT3, DAMT4, DAMT5, DAMT6, DAMT7, DAMT8, DPMT1, DPMT2, DPMT3, DPMT4, DPMT5, DPMT6, DPMT7, DPMT8, SG1, SG2, SG3, SG4, SG5, SG6, EKG1, EKG2, DC1, DC2, DC3, DC4, DC5, DC6, DC7, DC8, DC9, DC10, DC11, DC12')" title="(Click to open in popup)&#13;&#13;G1, G2, G3, G4, G5, G6, G7, G8, G9, G10, G11, G12, G13, G14, G15, G16, G17, G18, G19, G20, G21, G22, G23, G24, G25, G26, G27, G28, G29, G30, G31, G32, G33, G34, G35, G36, G37, G38, G39, G40, G41, G42, G43, G44, G45, G46, G47, G48, G49, G50, G51, G52, G53, G54, G55, G56, G57, G58, G59, G60, G61, G62, G63, G64, AT1, AT2, AT3, AT4, MT1, MT2, MT3, MT4, PT1, PT2, PT3, PT4, OC1, OC2, OC3, OC4, OC5, OC6, OC7, OC8, FR1, FR2, FR3, FR4, DAMT1, DAMT2, DAMT3, DAMT4, DAMT5, DAMT6, DAMT7, DAMT8, DPMT1, DPMT2, DPMT3, DPMT4, DPMT5, DPMT6, DPMT7, DPMT8, SG1, SG2, SG3, SG4, SG5, SG6, EKG1, EKG2, DC1, DC2, DC3, DC4, DC5, DC6, DC7, DC8, DC9, DC10, DC11, DC12">
+            124
+        </button>
+
+
+    </td>
+</tr>
+
+
+<tr class="repr-element channels-a1a2a278-a156-4df9-b136-8f1d9b81899b ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Head & sensor digitization</td>
+
+    <td>Not available</td>
+
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-section-header filters-a2d4a4a8-6d86-4901-a5fd-e61d87e9832a"  title="Hide section"
+    onclick="toggleVisibility('filters-a2d4a4a8-6d86-4901-a5fd-e61d87e9832a')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Filters</strong>
+    </th>
+</tr>
+
+<tr class="repr-element filters-a2d4a4a8-6d86-4901-a5fd-e61d87e9832a ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Highpass</td>
+    <td>0.00 Hz</td>
+</tr>
+
+
+<tr class="repr-element filters-a2d4a4a8-6d86-4901-a5fd-e61d87e9832a ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Lowpass</td>
+    <td>256.00 Hz</td>
+</tr>
+
+
+</table></div>
+</div>
+<p>Notice that the info above indicates there are 124 EEG channels. This is incorrect because there are different types of channels. When loading data with <code class="docutils literal notranslate"><span class="pre">mne_bids.read_raw_bids</span></code> or from a <code class="docutils literal notranslate"><span class="pre">fif</span></code> file, it will load correctly. In this case we will manually fix this by setting channel types depending on the channel names. This is important because we want to exclude non-ECoG data from analyses.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">name2type</span><span class="p">(</span><span class="n">channel_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">channel_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;DC&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;misc&#39;</span>
+    <span class="k">elif</span> <span class="n">channel_name</span> <span class="o">==</span> <span class="s1">&#39;Pulse Rate&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;misc&#39;</span>
+    <span class="k">elif</span> <span class="n">channel_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;EKG&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;ecg&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;ecog&#39;</span>
+
+<span class="n">channel_type_mapping</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">name2type</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">raw</span><span class="o">.</span><span class="n">ch_names</span><span class="p">}</span>
+
+<span class="n">raw</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">set_channel_types</span><span class="p">(</span><span class="n">channel_type_mapping</span><span class="p">)</span>
+<span class="n">raw</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/tmp/ipykernel_531495/3856841931.py:13: RuntimeWarning: The unit for channel(s) DC1, DC10, DC11, DC12, DC2, DC3, DC4, DC5, DC6, DC7, DC8, DC9 has changed from V to NA.
+  raw = raw.set_channel_types(channel_type_mapping)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<script type="text/javascript">
+    const toggleVisibility = (className) => {
+
+  const elements = document.querySelectorAll(`.${className}`)
+
+  elements.forEach(element => {
+    if (element.classList.contains('repr-section-header')) {
+      // Don't collapse the section header row.
+       return
+    }
+    if (element.classList.contains('repr-element-collapsed')) {
+      // Force a reflow to ensure the display change takes effect before removing the class
+      element.classList.remove('repr-element-collapsed')
+      element.offsetHeight // This forces the browser to recalculate layout
+      element.classList.remove('repr-element-faded')
+    } else {
+      // Start transition to hide the element
+      element.classList.add('repr-element-faded')
+      element.addEventListener('transitionend', handler = (e) => {
+        if (e.propertyName === 'opacity' && getComputedStyle(element).opacity === '0.2') {
+          element.classList.add('repr-element-collapsed')
+          element.removeEventListener('transitionend', handler)
+        }
+      });
+    }
+  });
+
+  // Take care of button (adjust caret)
+  const button = document.querySelectorAll(`.repr-section-header.${className} > th.repr-section-toggle-col > button`)[0]
+  button.classList.toggle('collapsed')
+
+  // Take care of the tooltip of the section header row
+  const sectionHeaderRow = document.querySelectorAll(`tr.repr-section-header.${className}`)[0]
+  sectionHeaderRow.classList.toggle('collapsed')
+  sectionHeaderRow.title = sectionHeaderRow.title === 'Hide section' ? 'Show section' : 'Hide section'
+}
+</script>
+
+<style type="text/css">
+    table.repr.table.table-hover.table-striped.table-sm.table-responsive.small {
+  /* Don't make rows wider than they need to be. */
+  display: inline;
+}
+
+table > tbody > tr.repr-element > td {
+  /* Apply a tighter layout to the table cells. */
+  padding-top: 0.1rem;
+  padding-bottom: 0.1rem;
+  padding-right: 1rem;
+}
+
+table > tbody > tr > td.repr-section-toggle-col {
+  /* Remove background and border of the first cell in every row
+     (this row is only used for the collapse / uncollapse caret)
+
+     TODO: Need to find a good solution for VS Code that works in both
+           light and dark mode. */
+  border-color: transparent;
+  --bs-table-accent-bg: transparent;
+}
+
+tr.repr-section-header {
+  /* Remove stripes from section header rows */
+  background-color: transparent;
+  border-color: transparent;
+  --bs-table-striped-bg: transparent;
+  cursor: pointer;
+}
+
+tr.repr-section-header > th {
+  text-align: left !important;
+  vertical-align: middle;
+}
+
+.repr-element, tr.repr-element > td {
+  opacity: 1;
+  text-align: left !important;
+}
+
+.repr-element-faded {
+  transition: 0.3s ease;
+  opacity: 0.2;
+}
+
+.repr-element-collapsed {
+  display: none;
+}
+
+/* Collapse / uncollapse button and the caret it contains. */
+.repr-section-toggle-col button {
+  cursor: pointer;
+  width: 1rem;
+  background-color: transparent;
+  border-color: transparent;
+}
+
+span.collapse-uncollapse-caret {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+  background-repeat: no-repeat;
+  background-position: left;
+  background-size: contain;
+}
+
+/* The collapse / uncollapse carets were copied from the free Font Awesome collection and adjusted. */
+
+/* Default to black carets for light mode */
+.repr-section-toggle-col > button.collapsed > span.collapse-uncollapse-caret {
+  background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="black" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>');
+}
+
+.repr-section-toggle-col
+  > button:not(.collapsed)
+  > span.collapse-uncollapse-caret {
+  background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="black" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>');
+}
+
+/* Use white carets for dark mode */
+@media (prefers-color-scheme: dark) {
+  .repr-section-toggle-col > button.collapsed > span.collapse-uncollapse-caret {
+    background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="white" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>');
+  }
+
+  .repr-section-toggle-col
+    > button:not(.collapsed)
+    > span.collapse-uncollapse-caret {
+    background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="white" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>');
+  }
+}
+
+.channel-names-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  cursor: pointer;
+  color: #0d6efd;
+}
+
+.channel-names-btn:hover {
+  color: #0a58ca;
+}
+</style>
+
+
+
+<table class="repr table table-hover table-striped table-sm table-responsive small">
+
+
+
+
+
+
+
+
+<tr class="repr-section-header general-fd63cb63-239b-4640-9cdf-431a88a5461e"  title="Hide section"
+    onclick="toggleVisibility('general-fd63cb63-239b-4640-9cdf-431a88a5461e')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>General</strong>
+    </th>
+</tr>
+
+<tr class="repr-element general-fd63cb63-239b-4640-9cdf-431a88a5461e ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Filename(s)</td>
+    <td>
+
+        sub-01_task-podcast_ieeg.edf
+
+
+    </td>
+</tr>
+
+<tr class="repr-element general-fd63cb63-239b-4640-9cdf-431a88a5461e ">
+    <td class="repr-section-toggle-col"></td>
+    <td>MNE object type</td>
+    <td>RawEDF</td>
+</tr>
+<tr class="repr-element general-fd63cb63-239b-4640-9cdf-431a88a5461e ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Measurement date</td>
+
+    <td>2024-09-17 at 12:02:32 UTC</td>
+
+</tr>
+<tr class="repr-element general-fd63cb63-239b-4640-9cdf-431a88a5461e ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Participant</td>
+
+
+    <td>&lt;no</td>
+
+
+</tr>
+<tr class="repr-element general-fd63cb63-239b-4640-9cdf-431a88a5461e ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Experimenter</td>
+
+    <td>Unknown</td>
+
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-section-header acquisition-4f219a3c-1456-4fe4-afe6-6f6194d88b8d"
+    title="Hide section"  onclick="toggleVisibility('acquisition-4f219a3c-1456-4fe4-afe6-6f6194d88b8d')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Acquisition</strong>
+    </th>
+</tr>
+
+<tr class="repr-element acquisition-4f219a3c-1456-4fe4-afe6-6f6194d88b8d ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Duration</td>
+    <td>00:29:60 (HH:MM:SS)</td>
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-element acquisition-4f219a3c-1456-4fe4-afe6-6f6194d88b8d ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Sampling frequency</td>
+    <td>512.00 Hz</td>
+</tr>
+
+
+<tr class="repr-element acquisition-4f219a3c-1456-4fe4-afe6-6f6194d88b8d ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Time points</td>
+    <td>921,600</td>
+</tr>
+
+
+
+
+
+
+
+
+
+
+<tr class="repr-section-header channels-f1445a9f-8ae1-4e71-911d-ca7fb7362ebd"  title="Hide section"
+    onclick="toggleVisibility('channels-f1445a9f-8ae1-4e71-911d-ca7fb7362ebd')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Channels</strong>
+    </th>
+</tr>
+
+
+<tr class="repr-element channels-f1445a9f-8ae1-4e71-911d-ca7fb7362ebd ">
+    <td class="repr-section-toggle-col"></td>
+    <td>ECG</td>
+    <td>
+        <button class="channel-names-btn" onclick="alert('Good ECG:\n\nEKG1, EKG2')" title="(Click to open in popup)&#13;&#13;EKG1, EKG2">
+            2
+        </button>
+
+
+    </td>
+</tr>
+
+
+<tr class="repr-element channels-f1445a9f-8ae1-4e71-911d-ca7fb7362ebd ">
+    <td class="repr-section-toggle-col"></td>
+    <td>misc</td>
+    <td>
+        <button class="channel-names-btn" onclick="alert('Good misc:\n\nDC1, DC2, DC3, DC4, DC5, DC6, DC7, DC8, DC9, DC10, DC11, DC12')" title="(Click to open in popup)&#13;&#13;DC1, DC2, DC3, DC4, DC5, DC6, DC7, DC8, DC9, DC10, DC11, DC12">
+            12
+        </button>
+
+
+    </td>
+</tr>
+
+
+<tr class="repr-element channels-f1445a9f-8ae1-4e71-911d-ca7fb7362ebd ">
+    <td class="repr-section-toggle-col"></td>
+    <td>ECoG</td>
+    <td>
+        <button class="channel-names-btn" onclick="alert('Good ECoG:\n\nG1, G2, G3, G4, G5, G6, G7, G8, G9, G10, G11, G12, G13, G14, G15, G16, G17, G18, G19, G20, G21, G22, G23, G24, G25, G26, G27, G28, G29, G30, G31, G32, G33, G34, G35, G36, G37, G38, G39, G40, G41, G42, G43, G44, G45, G46, G47, G48, G49, G50, G51, G52, G53, G54, G55, G56, G57, G58, G59, G60, G61, G62, G63, G64, AT1, AT2, AT3, AT4, MT1, MT2, MT3, MT4, PT1, PT2, PT3, PT4, OC1, OC2, OC3, OC4, OC5, OC6, OC7, OC8, FR1, FR2, FR3, FR4, DAMT1, DAMT2, DAMT3, DAMT4, DAMT5, DAMT6, DAMT7, DAMT8, DPMT1, DPMT2, DPMT3, DPMT4, DPMT5, DPMT6, DPMT7, DPMT8, SG1, SG2, SG3, SG4, SG5, SG6')" title="(Click to open in popup)&#13;&#13;G1, G2, G3, G4, G5, G6, G7, G8, G9, G10, G11, G12, G13, G14, G15, G16, G17, G18, G19, G20, G21, G22, G23, G24, G25, G26, G27, G28, G29, G30, G31, G32, G33, G34, G35, G36, G37, G38, G39, G40, G41, G42, G43, G44, G45, G46, G47, G48, G49, G50, G51, G52, G53, G54, G55, G56, G57, G58, G59, G60, G61, G62, G63, G64, AT1, AT2, AT3, AT4, MT1, MT2, MT3, MT4, PT1, PT2, PT3, PT4, OC1, OC2, OC3, OC4, OC5, OC6, OC7, OC8, FR1, FR2, FR3, FR4, DAMT1, DAMT2, DAMT3, DAMT4, DAMT5, DAMT6, DAMT7, DAMT8, DPMT1, DPMT2, DPMT3, DPMT4, DPMT5, DPMT6, DPMT7, DPMT8, SG1, SG2, SG3, SG4, SG5, SG6">
+            110
+        </button>
+
+
+    </td>
+</tr>
+
+
+<tr class="repr-element channels-f1445a9f-8ae1-4e71-911d-ca7fb7362ebd ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Head & sensor digitization</td>
+
+    <td>Not available</td>
+
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-section-header filters-c2343b3b-f00b-4cd0-9589-f838d69a2c3c"  title="Hide section"
+    onclick="toggleVisibility('filters-c2343b3b-f00b-4cd0-9589-f838d69a2c3c')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Filters</strong>
+    </th>
+</tr>
+
+<tr class="repr-element filters-c2343b3b-f00b-4cd0-9589-f838d69a2c3c ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Highpass</td>
+    <td>0.00 Hz</td>
+</tr>
+
+
+<tr class="repr-element filters-c2343b3b-f00b-4cd0-9589-f838d69a2c3c ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Lowpass</td>
+    <td>256.00 Hz</td>
+</tr>
+
+
+</table></div>
+</div>
+<p>Notice now that the channels information above displays different types.</p>
+</section>
+<section id="Power-spectrum">
+<h2>Power spectrum<a class="headerlink" href="#Power-spectrum" title="Link to this heading">¶</a></h2>
+<p>Before preprocessing, it is important to visually inspect channel data to mark electrodes with significant noise or other problems. Here, we will use a <a class="reference external" href="https://en.wikipedia.org/wiki/Spectral_density">power spectrum density</a> to visualize the frequency density per electrode. This is a convenient method of finding problematic electrodes.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">psd</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">compute_psd</span><span class="p">(</span><span class="n">picks</span><span class="o">=</span><span class="s1">&#39;ecog&#39;</span><span class="p">)</span>
+<span class="n">psd</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Effective window size : 4.000 (s)
+Plotting power spectral density (dB=True).
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/tmp/ipykernel_531495/428485453.py:2: RuntimeWarning: Channel locations not available. Disabling spatial colors.
+  psd.plot()
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_02-preprocessing_12_2.png" src="../_images/notebooks_02-preprocessing_12_2.png" />
+</div>
+</div>
+<p>Notice the outlier channels that exhibit periodic oscillations and deviate from the 1/f pattern the majority of the channels follow. We identified these electrodes by name from an previous analyses. Here, we will mark them as <code class="docutils literal notranslate"><span class="pre">bad</span></code> electrodes using the <code class="docutils literal notranslate"><span class="pre">Info</span></code> object.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">&#39;bads&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;DAMT1&#39;</span><span class="p">,</span> <span class="s1">&#39;DPMT4&#39;</span><span class="p">,</span> <span class="s1">&#39;DPMT6&#39;</span><span class="p">,</span> <span class="s1">&#39;DPMT7&#39;</span><span class="p">]</span>
+<span class="n">raw</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<script type="text/javascript">
+    const toggleVisibility = (className) => {
+
+  const elements = document.querySelectorAll(`.${className}`)
+
+  elements.forEach(element => {
+    if (element.classList.contains('repr-section-header')) {
+      // Don't collapse the section header row.
+       return
+    }
+    if (element.classList.contains('repr-element-collapsed')) {
+      // Force a reflow to ensure the display change takes effect before removing the class
+      element.classList.remove('repr-element-collapsed')
+      element.offsetHeight // This forces the browser to recalculate layout
+      element.classList.remove('repr-element-faded')
+    } else {
+      // Start transition to hide the element
+      element.classList.add('repr-element-faded')
+      element.addEventListener('transitionend', handler = (e) => {
+        if (e.propertyName === 'opacity' && getComputedStyle(element).opacity === '0.2') {
+          element.classList.add('repr-element-collapsed')
+          element.removeEventListener('transitionend', handler)
+        }
+      });
+    }
+  });
+
+  // Take care of button (adjust caret)
+  const button = document.querySelectorAll(`.repr-section-header.${className} > th.repr-section-toggle-col > button`)[0]
+  button.classList.toggle('collapsed')
+
+  // Take care of the tooltip of the section header row
+  const sectionHeaderRow = document.querySelectorAll(`tr.repr-section-header.${className}`)[0]
+  sectionHeaderRow.classList.toggle('collapsed')
+  sectionHeaderRow.title = sectionHeaderRow.title === 'Hide section' ? 'Show section' : 'Hide section'
+}
+</script>
+
+<style type="text/css">
+    table.repr.table.table-hover.table-striped.table-sm.table-responsive.small {
+  /* Don't make rows wider than they need to be. */
+  display: inline;
+}
+
+table > tbody > tr.repr-element > td {
+  /* Apply a tighter layout to the table cells. */
+  padding-top: 0.1rem;
+  padding-bottom: 0.1rem;
+  padding-right: 1rem;
+}
+
+table > tbody > tr > td.repr-section-toggle-col {
+  /* Remove background and border of the first cell in every row
+     (this row is only used for the collapse / uncollapse caret)
+
+     TODO: Need to find a good solution for VS Code that works in both
+           light and dark mode. */
+  border-color: transparent;
+  --bs-table-accent-bg: transparent;
+}
+
+tr.repr-section-header {
+  /* Remove stripes from section header rows */
+  background-color: transparent;
+  border-color: transparent;
+  --bs-table-striped-bg: transparent;
+  cursor: pointer;
+}
+
+tr.repr-section-header > th {
+  text-align: left !important;
+  vertical-align: middle;
+}
+
+.repr-element, tr.repr-element > td {
+  opacity: 1;
+  text-align: left !important;
+}
+
+.repr-element-faded {
+  transition: 0.3s ease;
+  opacity: 0.2;
+}
+
+.repr-element-collapsed {
+  display: none;
+}
+
+/* Collapse / uncollapse button and the caret it contains. */
+.repr-section-toggle-col button {
+  cursor: pointer;
+  width: 1rem;
+  background-color: transparent;
+  border-color: transparent;
+}
+
+span.collapse-uncollapse-caret {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+  background-repeat: no-repeat;
+  background-position: left;
+  background-size: contain;
+}
+
+/* The collapse / uncollapse carets were copied from the free Font Awesome collection and adjusted. */
+
+/* Default to black carets for light mode */
+.repr-section-toggle-col > button.collapsed > span.collapse-uncollapse-caret {
+  background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="black" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>');
+}
+
+.repr-section-toggle-col
+  > button:not(.collapsed)
+  > span.collapse-uncollapse-caret {
+  background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="black" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>');
+}
+
+/* Use white carets for dark mode */
+@media (prefers-color-scheme: dark) {
+  .repr-section-toggle-col > button.collapsed > span.collapse-uncollapse-caret {
+    background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="white" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>');
+  }
+
+  .repr-section-toggle-col
+    > button:not(.collapsed)
+    > span.collapse-uncollapse-caret {
+    background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="white" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>');
+  }
+}
+
+.channel-names-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  cursor: pointer;
+  color: #0d6efd;
+}
+
+.channel-names-btn:hover {
+  color: #0a58ca;
+}
+</style>
+
+
+
+<table class="repr table table-hover table-striped table-sm table-responsive small">
+
+
+
+
+
+
+
+
+<tr class="repr-section-header general-19915179-3b17-4cd5-9449-b470b2b75483"  title="Hide section"
+    onclick="toggleVisibility('general-19915179-3b17-4cd5-9449-b470b2b75483')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>General</strong>
+    </th>
+</tr>
+
+<tr class="repr-element general-19915179-3b17-4cd5-9449-b470b2b75483 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Filename(s)</td>
+    <td>
+
+        sub-01_task-podcast_ieeg.edf
+
+
+    </td>
+</tr>
+
+<tr class="repr-element general-19915179-3b17-4cd5-9449-b470b2b75483 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>MNE object type</td>
+    <td>RawEDF</td>
+</tr>
+<tr class="repr-element general-19915179-3b17-4cd5-9449-b470b2b75483 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Measurement date</td>
+
+    <td>2024-09-17 at 12:02:32 UTC</td>
+
+</tr>
+<tr class="repr-element general-19915179-3b17-4cd5-9449-b470b2b75483 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Participant</td>
+
+
+    <td>&lt;no</td>
+
+
+</tr>
+<tr class="repr-element general-19915179-3b17-4cd5-9449-b470b2b75483 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Experimenter</td>
+
+    <td>Unknown</td>
+
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-section-header acquisition-16410a6a-37ba-4a0a-a4f6-664ae9d9ec4b"
+    title="Hide section"  onclick="toggleVisibility('acquisition-16410a6a-37ba-4a0a-a4f6-664ae9d9ec4b')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Acquisition</strong>
+    </th>
+</tr>
+
+<tr class="repr-element acquisition-16410a6a-37ba-4a0a-a4f6-664ae9d9ec4b ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Duration</td>
+    <td>00:29:60 (HH:MM:SS)</td>
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-element acquisition-16410a6a-37ba-4a0a-a4f6-664ae9d9ec4b ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Sampling frequency</td>
+    <td>512.00 Hz</td>
+</tr>
+
+
+<tr class="repr-element acquisition-16410a6a-37ba-4a0a-a4f6-664ae9d9ec4b ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Time points</td>
+    <td>921,600</td>
+</tr>
+
+
+
+
+
+
+
+
+
+
+<tr class="repr-section-header channels-22cebe43-03f3-45f3-866e-7753c87a3388"  title="Hide section"
+    onclick="toggleVisibility('channels-22cebe43-03f3-45f3-866e-7753c87a3388')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Channels</strong>
+    </th>
+</tr>
+
+
+<tr class="repr-element channels-22cebe43-03f3-45f3-866e-7753c87a3388 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>ECG</td>
+    <td>
+        <button class="channel-names-btn" onclick="alert('Good ECG:\n\nEKG1, EKG2')" title="(Click to open in popup)&#13;&#13;EKG1, EKG2">
+            2
+        </button>
+
+
+    </td>
+</tr>
+
+
+<tr class="repr-element channels-22cebe43-03f3-45f3-866e-7753c87a3388 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>misc</td>
+    <td>
+        <button class="channel-names-btn" onclick="alert('Good misc:\n\nDC1, DC2, DC3, DC4, DC5, DC6, DC7, DC8, DC9, DC10, DC11, DC12')" title="(Click to open in popup)&#13;&#13;DC1, DC2, DC3, DC4, DC5, DC6, DC7, DC8, DC9, DC10, DC11, DC12">
+            12
+        </button>
+
+
+    </td>
+</tr>
+
+
+<tr class="repr-element channels-22cebe43-03f3-45f3-866e-7753c87a3388 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>ECoG</td>
+    <td>
+        <button class="channel-names-btn" onclick="alert('Good ECoG:\n\nG1, G2, G3, G4, G5, G6, G7, G8, G9, G10, G11, G12, G13, G14, G15, G16, G17, G18, G19, G20, G21, G22, G23, G24, G25, G26, G27, G28, G29, G30, G31, G32, G33, G34, G35, G36, G37, G38, G39, G40, G41, G42, G43, G44, G45, G46, G47, G48, G49, G50, G51, G52, G53, G54, G55, G56, G57, G58, G59, G60, G61, G62, G63, G64, AT1, AT2, AT3, AT4, MT1, MT2, MT3, MT4, PT1, PT2, PT3, PT4, OC1, OC2, OC3, OC4, OC5, OC6, OC7, OC8, FR1, FR2, FR3, FR4, DAMT2, DAMT3, DAMT4, DAMT5, DAMT6, DAMT7, DAMT8, DPMT1, DPMT2, DPMT3, DPMT5, DPMT8, SG1, SG2, SG3, SG4, SG5, SG6')" title="(Click to open in popup)&#13;&#13;G1, G2, G3, G4, G5, G6, G7, G8, G9, G10, G11, G12, G13, G14, G15, G16, G17, G18, G19, G20, G21, G22, G23, G24, G25, G26, G27, G28, G29, G30, G31, G32, G33, G34, G35, G36, G37, G38, G39, G40, G41, G42, G43, G44, G45, G46, G47, G48, G49, G50, G51, G52, G53, G54, G55, G56, G57, G58, G59, G60, G61, G62, G63, G64, AT1, AT2, AT3, AT4, MT1, MT2, MT3, MT4, PT1, PT2, PT3, PT4, OC1, OC2, OC3, OC4, OC5, OC6, OC7, OC8, FR1, FR2, FR3, FR4, DAMT2, DAMT3, DAMT4, DAMT5, DAMT6, DAMT7, DAMT8, DPMT1, DPMT2, DPMT3, DPMT5, DPMT8, SG1, SG2, SG3, SG4, SG5, SG6">
+            106
+        </button>
+
+
+
+        and <button class="channel-names-btn" onclick="alert('Bad ECoG:\n\nDAMT1, DPMT4, DPMT6, DPMT7')" title="(Click to open in popup)&#13;&#13;DAMT1, DPMT4, DPMT6, DPMT7">
+            4 bad
+        </button>
+
+    </td>
+</tr>
+
+
+<tr class="repr-element channels-22cebe43-03f3-45f3-866e-7753c87a3388 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Head & sensor digitization</td>
+
+    <td>Not available</td>
+
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-section-header filters-47608f89-f7a3-42a8-aa07-da86e4424255"  title="Hide section"
+    onclick="toggleVisibility('filters-47608f89-f7a3-42a8-aa07-da86e4424255')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Filters</strong>
+    </th>
+</tr>
+
+<tr class="repr-element filters-47608f89-f7a3-42a8-aa07-da86e4424255 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Highpass</td>
+    <td>0.00 Hz</td>
+</tr>
+
+
+<tr class="repr-element filters-47608f89-f7a3-42a8-aa07-da86e4424255 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Lowpass</td>
+    <td>256.00 Hz</td>
+</tr>
+
+
+</table></div>
+</div>
+</section>
+<section id="Common-average-re-referencing">
+<h2>Common average re-referencing<a class="headerlink" href="#Common-average-re-referencing" title="Link to this heading">¶</a></h2>
+<p>Re-referencing is a common procedure applied to EEG and ECoG signals in order to remove common noise present across electrodes. This process simply averages all good channels together into one time series, and then subtracts the average from each channel. MNE implements this process in <a class="reference external" href="https://mne.tools/stable/generated/mne.io.Raw.html#mne.io.Raw.set_eeg_reference">set_eeg_reference</a>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Re-reference data</span>
+<span class="n">raw</span><span class="o">.</span><span class="n">load_data</span><span class="p">()</span>  <span class="c1"># required</span>
+<span class="n">rereferenced_raw</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">set_eeg_reference</span><span class="p">(</span><span class="n">ref_channels</span><span class="o">=</span><span class="s2">&quot;average&quot;</span><span class="p">,</span> <span class="n">ch_type</span><span class="o">=</span><span class="s2">&quot;ecog&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Reading 0 ... 921599  =      0.000 ...  1799.998 secs...
+Applying average reference.
+Applying a custom (&#39;ECoG&#39;,) reference.
+</pre></div></div>
+</div>
+</section>
+<section id="Notch-filter-powerline-noise">
+<h2>Notch filter powerline noise<a class="headerlink" href="#Notch-filter-powerline-noise" title="Link to this heading">¶</a></h2>
+<p><a class="reference external" href="https://en.wikipedia.org/wiki/Utility_frequency">Powerline noise</a> is an artifact in electrophysiology that comes from the line frequency of power from a utility (60 Hz in US, 50 Hz in other parts of the world). You can see the noise in the power spectrum above as sharp peaks at 60 Hz and its harmonics. We can easily remove these frequencies using a Notch filter using MNE:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Notch filter power line noise</span>
+<span class="n">powerline_freq</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;line_freq&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">powerline_freq</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">powerline_freq</span> <span class="o">=</span> <span class="mi">60</span>
+<span class="n">freqs</span> <span class="o">=</span> <span class="p">[</span><span class="n">powerline_freq</span> <span class="o">*</span> <span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)]</span>
+<span class="n">notched_raw</span> <span class="o">=</span> <span class="n">rereferenced_raw</span><span class="o">.</span><span class="n">notch_filter</span><span class="p">(</span><span class="n">freqs</span><span class="o">=</span><span class="n">freqs</span><span class="p">,</span> <span class="n">notch_widths</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Filtering raw data in 1 contiguous segment
+Setting up band-stop filter
+
+FIR filter parameters
+---------------------
+Designing a one-pass, zero-phase, non-causal bandstop filter:
+- Windowed time-domain design (firwin) method
+- Hamming window with 0.0194 passband ripple and 53 dB stopband attenuation
+- Lower transition bandwidth: 0.50 Hz
+- Upper transition bandwidth: 0.50 Hz
+- Filter length: 3381 samples (6.604 s)
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+[Parallel(n_jobs=1)]: Done  17 tasks      | elapsed:    0.6s
+[Parallel(n_jobs=1)]: Done  71 tasks      | elapsed:    2.6s
+</pre></div></div>
+</div>
+</section>
+<section id="Frequency-band-extraction">
+<h2>Frequency-band extraction<a class="headerlink" href="#Frequency-band-extraction" title="Link to this heading">¶</a></h2>
+<p>The signal so far is considered “cleaned” and ready for analyses. However, all other tutorials use the power modulations of the high gamma frequency band. This means we extract the signal with frequencies in the range 70–200 Hz, then apply a <a class="reference external" href="https://en.wikipedia.org/wiki/Hilbert_transform">hilbert transform</a> to extract power modulation as the envelope of the analytic signal. Luckily, MNE implements these steps using the <code class="docutils literal notranslate"><span class="pre">filter</span></code> and <code class="docutils literal notranslate"><span class="pre">apply_hilbert</span></code> functions:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">iir_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">ftype</span><span class="o">=</span><span class="s2">&quot;butter&quot;</span><span class="p">)</span>
+<span class="n">band_raw</span> <span class="o">=</span> <span class="n">notched_raw</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="mi">70</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="n">picks</span><span class="o">=</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;iir&quot;</span><span class="p">,</span> <span class="n">iir_params</span><span class="o">=</span><span class="n">iir_params</span><span class="p">)</span>
+<span class="n">band_raw</span> <span class="o">=</span> <span class="n">band_raw</span><span class="o">.</span><span class="n">apply_hilbert</span><span class="p">(</span><span class="n">envelope</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">band_raw</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Filtering raw data in 1 contiguous segment
+Setting up band-pass filter from 70 - 2e+02 Hz
+
+IIR filter parameters
+---------------------
+Butterworth bandpass zero-phase (two-pass forward and reverse) non-causal filter:
+- Filter order 16 (effective, after forward-backward)
+- Cutoffs at 70.00, 200.00 Hz: -6.02, -6.02 dB
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="output_area rendered_html docutils container">
+<script type="text/javascript">
+    const toggleVisibility = (className) => {
+
+  const elements = document.querySelectorAll(`.${className}`)
+
+  elements.forEach(element => {
+    if (element.classList.contains('repr-section-header')) {
+      // Don't collapse the section header row.
+       return
+    }
+    if (element.classList.contains('repr-element-collapsed')) {
+      // Force a reflow to ensure the display change takes effect before removing the class
+      element.classList.remove('repr-element-collapsed')
+      element.offsetHeight // This forces the browser to recalculate layout
+      element.classList.remove('repr-element-faded')
+    } else {
+      // Start transition to hide the element
+      element.classList.add('repr-element-faded')
+      element.addEventListener('transitionend', handler = (e) => {
+        if (e.propertyName === 'opacity' && getComputedStyle(element).opacity === '0.2') {
+          element.classList.add('repr-element-collapsed')
+          element.removeEventListener('transitionend', handler)
+        }
+      });
+    }
+  });
+
+  // Take care of button (adjust caret)
+  const button = document.querySelectorAll(`.repr-section-header.${className} > th.repr-section-toggle-col > button`)[0]
+  button.classList.toggle('collapsed')
+
+  // Take care of the tooltip of the section header row
+  const sectionHeaderRow = document.querySelectorAll(`tr.repr-section-header.${className}`)[0]
+  sectionHeaderRow.classList.toggle('collapsed')
+  sectionHeaderRow.title = sectionHeaderRow.title === 'Hide section' ? 'Show section' : 'Hide section'
+}
+</script>
+
+<style type="text/css">
+    table.repr.table.table-hover.table-striped.table-sm.table-responsive.small {
+  /* Don't make rows wider than they need to be. */
+  display: inline;
+}
+
+table > tbody > tr.repr-element > td {
+  /* Apply a tighter layout to the table cells. */
+  padding-top: 0.1rem;
+  padding-bottom: 0.1rem;
+  padding-right: 1rem;
+}
+
+table > tbody > tr > td.repr-section-toggle-col {
+  /* Remove background and border of the first cell in every row
+     (this row is only used for the collapse / uncollapse caret)
+
+     TODO: Need to find a good solution for VS Code that works in both
+           light and dark mode. */
+  border-color: transparent;
+  --bs-table-accent-bg: transparent;
+}
+
+tr.repr-section-header {
+  /* Remove stripes from section header rows */
+  background-color: transparent;
+  border-color: transparent;
+  --bs-table-striped-bg: transparent;
+  cursor: pointer;
+}
+
+tr.repr-section-header > th {
+  text-align: left !important;
+  vertical-align: middle;
+}
+
+.repr-element, tr.repr-element > td {
+  opacity: 1;
+  text-align: left !important;
+}
+
+.repr-element-faded {
+  transition: 0.3s ease;
+  opacity: 0.2;
+}
+
+.repr-element-collapsed {
+  display: none;
+}
+
+/* Collapse / uncollapse button and the caret it contains. */
+.repr-section-toggle-col button {
+  cursor: pointer;
+  width: 1rem;
+  background-color: transparent;
+  border-color: transparent;
+}
+
+span.collapse-uncollapse-caret {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+  background-repeat: no-repeat;
+  background-position: left;
+  background-size: contain;
+}
+
+/* The collapse / uncollapse carets were copied from the free Font Awesome collection and adjusted. */
+
+/* Default to black carets for light mode */
+.repr-section-toggle-col > button.collapsed > span.collapse-uncollapse-caret {
+  background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="black" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>');
+}
+
+.repr-section-toggle-col
+  > button:not(.collapsed)
+  > span.collapse-uncollapse-caret {
+  background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="black" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>');
+}
+
+/* Use white carets for dark mode */
+@media (prefers-color-scheme: dark) {
+  .repr-section-toggle-col > button.collapsed > span.collapse-uncollapse-caret {
+    background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="white" d="M246.6 278.6c12.5-12.5 12.5-32.8 0-45.3l-128-128c-9.2-9.2-22.9-11.9-34.9-6.9s-19.8 16.6-19.8 29.6l0 256c0 12.9 7.8 24.6 19.8 29.6s25.7 2.2 34.9-6.9l128-128z"/></svg>');
+  }
+
+  .repr-section-toggle-col
+    > button:not(.collapsed)
+    > span.collapse-uncollapse-caret {
+    background-image: url('data:image/svg+xml;charset=utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path fill="white" d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/></svg>');
+  }
+}
+
+.channel-names-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  cursor: pointer;
+  color: #0d6efd;
+}
+
+.channel-names-btn:hover {
+  color: #0a58ca;
+}
+</style>
+
+
+
+<table class="repr table table-hover table-striped table-sm table-responsive small">
+
+
+
+
+
+
+
+
+<tr class="repr-section-header general-3c58a271-6088-4695-b52a-d40fe451979c"  title="Hide section"
+    onclick="toggleVisibility('general-3c58a271-6088-4695-b52a-d40fe451979c')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>General</strong>
+    </th>
+</tr>
+
+<tr class="repr-element general-3c58a271-6088-4695-b52a-d40fe451979c ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Filename(s)</td>
+    <td>
+
+        sub-01_task-podcast_ieeg.edf
+
+
+    </td>
+</tr>
+
+<tr class="repr-element general-3c58a271-6088-4695-b52a-d40fe451979c ">
+    <td class="repr-section-toggle-col"></td>
+    <td>MNE object type</td>
+    <td>RawEDF</td>
+</tr>
+<tr class="repr-element general-3c58a271-6088-4695-b52a-d40fe451979c ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Measurement date</td>
+
+    <td>2024-09-17 at 12:02:32 UTC</td>
+
+</tr>
+<tr class="repr-element general-3c58a271-6088-4695-b52a-d40fe451979c ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Participant</td>
+
+
+    <td>&lt;no</td>
+
+
+</tr>
+<tr class="repr-element general-3c58a271-6088-4695-b52a-d40fe451979c ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Experimenter</td>
+
+    <td>Unknown</td>
+
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-section-header acquisition-21cf3057-db6b-478b-9a1d-d03507efeff1"
+    title="Hide section"  onclick="toggleVisibility('acquisition-21cf3057-db6b-478b-9a1d-d03507efeff1')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Acquisition</strong>
+    </th>
+</tr>
+
+<tr class="repr-element acquisition-21cf3057-db6b-478b-9a1d-d03507efeff1 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Duration</td>
+    <td>00:29:60 (HH:MM:SS)</td>
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-element acquisition-21cf3057-db6b-478b-9a1d-d03507efeff1 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Sampling frequency</td>
+    <td>512.00 Hz</td>
+</tr>
+
+
+<tr class="repr-element acquisition-21cf3057-db6b-478b-9a1d-d03507efeff1 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Time points</td>
+    <td>921,600</td>
+</tr>
+
+
+
+
+
+
+
+
+
+
+<tr class="repr-section-header channels-7d54455a-6028-4e79-8a97-111745f7fb99"  title="Hide section"
+    onclick="toggleVisibility('channels-7d54455a-6028-4e79-8a97-111745f7fb99')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Channels</strong>
+    </th>
+</tr>
+
+
+<tr class="repr-element channels-7d54455a-6028-4e79-8a97-111745f7fb99 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>ECG</td>
+    <td>
+        <button class="channel-names-btn" onclick="alert('Good ECG:\n\nEKG1, EKG2')" title="(Click to open in popup)&#13;&#13;EKG1, EKG2">
+            2
+        </button>
+
+
+    </td>
+</tr>
+
+
+<tr class="repr-element channels-7d54455a-6028-4e79-8a97-111745f7fb99 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>misc</td>
+    <td>
+        <button class="channel-names-btn" onclick="alert('Good misc:\n\nDC1, DC2, DC3, DC4, DC5, DC6, DC7, DC8, DC9, DC10, DC11, DC12')" title="(Click to open in popup)&#13;&#13;DC1, DC2, DC3, DC4, DC5, DC6, DC7, DC8, DC9, DC10, DC11, DC12">
+            12
+        </button>
+
+
+    </td>
+</tr>
+
+
+<tr class="repr-element channels-7d54455a-6028-4e79-8a97-111745f7fb99 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>ECoG</td>
+    <td>
+        <button class="channel-names-btn" onclick="alert('Good ECoG:\n\nG1, G2, G3, G4, G5, G6, G7, G8, G9, G10, G11, G12, G13, G14, G15, G16, G17, G18, G19, G20, G21, G22, G23, G24, G25, G26, G27, G28, G29, G30, G31, G32, G33, G34, G35, G36, G37, G38, G39, G40, G41, G42, G43, G44, G45, G46, G47, G48, G49, G50, G51, G52, G53, G54, G55, G56, G57, G58, G59, G60, G61, G62, G63, G64, AT1, AT2, AT3, AT4, MT1, MT2, MT3, MT4, PT1, PT2, PT3, PT4, OC1, OC2, OC3, OC4, OC5, OC6, OC7, OC8, FR1, FR2, FR3, FR4, DAMT2, DAMT3, DAMT4, DAMT5, DAMT6, DAMT7, DAMT8, DPMT1, DPMT2, DPMT3, DPMT5, DPMT8, SG1, SG2, SG3, SG4, SG5, SG6')" title="(Click to open in popup)&#13;&#13;G1, G2, G3, G4, G5, G6, G7, G8, G9, G10, G11, G12, G13, G14, G15, G16, G17, G18, G19, G20, G21, G22, G23, G24, G25, G26, G27, G28, G29, G30, G31, G32, G33, G34, G35, G36, G37, G38, G39, G40, G41, G42, G43, G44, G45, G46, G47, G48, G49, G50, G51, G52, G53, G54, G55, G56, G57, G58, G59, G60, G61, G62, G63, G64, AT1, AT2, AT3, AT4, MT1, MT2, MT3, MT4, PT1, PT2, PT3, PT4, OC1, OC2, OC3, OC4, OC5, OC6, OC7, OC8, FR1, FR2, FR3, FR4, DAMT2, DAMT3, DAMT4, DAMT5, DAMT6, DAMT7, DAMT8, DPMT1, DPMT2, DPMT3, DPMT5, DPMT8, SG1, SG2, SG3, SG4, SG5, SG6">
+            106
+        </button>
+
+
+
+        and <button class="channel-names-btn" onclick="alert('Bad ECoG:\n\nDAMT1, DPMT4, DPMT6, DPMT7')" title="(Click to open in popup)&#13;&#13;DAMT1, DPMT4, DPMT6, DPMT7">
+            4 bad
+        </button>
+
+    </td>
+</tr>
+
+
+<tr class="repr-element channels-7d54455a-6028-4e79-8a97-111745f7fb99 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Head & sensor digitization</td>
+
+    <td>Not available</td>
+
+</tr>
+
+
+
+
+
+
+
+
+<tr class="repr-section-header filters-87fe6021-78ee-4ee6-917b-a8cf49b48e51"  title="Hide section"
+    onclick="toggleVisibility('filters-87fe6021-78ee-4ee6-917b-a8cf49b48e51')">
+    <th class="repr-section-toggle-col">
+        <button>
+
+            <span class="collapse-uncollapse-caret"></span>
+        </button>
+    </th>
+    <th colspan="2">
+        <strong>Filters</strong>
+    </th>
+</tr>
+
+<tr class="repr-element filters-87fe6021-78ee-4ee6-917b-a8cf49b48e51 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Highpass</td>
+    <td>70.00 Hz</td>
+</tr>
+
+
+<tr class="repr-element filters-87fe6021-78ee-4ee6-917b-a8cf49b48e51 ">
+    <td class="repr-section-toggle-col"></td>
+    <td>Lowpass</td>
+    <td>200.00 Hz</td>
+</tr>
+
+
+</table></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="../index.html">
+    <img class="logo" src="../_static/logo.png" alt="Logo" />
+    
+  </a>
+</p>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=hassonlab&repo=podcast-ecog-tutorials&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Tutorials:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="00-intro.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="01-qualitychecks.html">ECoG quality checks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="03-features.html">Getting word embeddings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="04-encoding.html">Training and evaluating encoding models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="06-banded-ridge.html">Banded ridge regression</a></li>
+<li class="toctree-l1"><a class="reference internal" href="05-atlases.html">Atlas-based electrode regions</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">ECoG preprocessing</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="05-atlases.html" title="previous chapter">Atlas-based electrode regions</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;CC BY.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/notebooks/02-preprocessing.ipynb.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

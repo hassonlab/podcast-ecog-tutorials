@@ -1099,7 +1099,7 @@ Detected kernel version 4.18.0, which is below the recommended minimum of 5.5.0;
 </table>
 </div></div>
 </div>
-<p>And confirm the size and number of embeddings we got. Note that there are 13 layers (instead of the expected 12) because also included are the initial embeddings before the first layer of the network.</p>
+<p>And confirm the size and number of embeddings we got. Note that there are 13 layers (instead of the expected 12) because also included are the initial embeddings before the first layer of the network. Note that list of embeddings will be in batches, which will require flatenning to match the number of tokens.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
 </pre></div>
@@ -1128,13 +1128,22 @@ Each word embedding is 768 dimensions long
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper">
-            <p class="logo"><a href="../index.html">
-              <img class="logo" src="../_static/logo.png" alt="Logo of ECoG tutorials"/>
-            </a></p>
-<h1 class="logo"><a href="../index.html">ECoG tutorials</a></h1>
+<p class="logo">
+  <a href="../index.html">
+    <img class="logo" src="../_static/logo.png" alt="Logo" />
+    
+  </a>
+</p>
 
 
 
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=hassonlab&repo=podcast-ecog-tutorials&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
 
 
 
@@ -1156,7 +1165,9 @@ Each word embedding is 768 dimensions long
 <li class="toctree-l1"><a class="reference internal" href="01-qualitychecks.html">ECoG quality checks</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Getting word embeddings</a></li>
 <li class="toctree-l1"><a class="reference internal" href="04-encoding.html">Training and evaluating encoding models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="06-banded-ridge.html">Banded ridge regression</a></li>
 <li class="toctree-l1"><a class="reference internal" href="05-atlases.html">Atlas-based electrode regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="02-preprocessing.html">ECoG preprocessing</a></li>
 </ul>
 
 <div class="relations">

@@ -85,7 +85,7 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "We will now load two different features. The first is syntactic features constructed using spacy.io ([Honnibal et al., 2020](https://github.com/explosion/spaCy)). The second contains contextual word embeddings generated from GPT-2 ([Radford et al., 2019](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)). The loaded features should be a numpy array with a shape of (number of tokens * feature dimensions). Note that the numbers of tokens are different for the two features because of different tokenization schemas."
+    "We will now load two contextual word embeddings from GPT-2 ([Radford et al., 2019](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)). The loaded features should be a numpy array with a shape of (number of tokens * feature dimensions). Note that the numbers of tokens are different for the two features because of different tokenization schemas."
    ]
   },
   {

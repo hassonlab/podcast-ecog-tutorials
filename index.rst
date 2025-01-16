@@ -17,6 +17,8 @@ Here are three ways to use the tutorials:
    notebooks/01-qualitychecks.ipynb
    notebooks/03-features.ipynb
    notebooks/04-encoding.ipynb
+   notebooks/06-banded-ridge.ipynb
    notebooks/05-atlases.ipynb
+   notebooks/02-preprocessing.ipynb
 
 .. image:: _static/fig1.png
